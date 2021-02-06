@@ -52,11 +52,11 @@ def generate_db(data_path, db_url):
     # extract Protein information:
     proteinfile = data_path + "vog.proteins.all.fa"
     proteins = [[s.id, str(s.seq)] for s in SeqIO.parse(proteinfile, "fasta")]
-    df_aa = pd.DataFrame(proteins, columns=['ProteinID', 'AASeq']).set_index("ProteinID")
+    df_aa = pd.DataFrame(proteins, columns=['ProteinID', 'AASeq']).set_index('ProteinID')
 
     genefile = data_path + "vog.genes.all.fa"
     genes = [[s.id, str(s.seq)] for s in SeqIO.parse(genefile, "fasta")]
-    df_nt = pd.DataFrame(genes, columns=['ProteinID', 'NTSeq']).set_index("ProteinID")
+    df_nt = pd.DataFrame(genes, columns=['ProteinID', 'NTSeq']).set_index('ProteinID')
 
     prot_df = df_aa.merge(df_nt, on='ProteinID', how='outer')
     # place taxonID in a separate column
@@ -148,39 +148,6 @@ def generate_db(data_path, db_url):
             ).map({1: "phages_only", 2: "np_only", 3: "mixed"}),
         )
     )
-
-    # dfr['VirusSpecific'] = np.where((dfr['StringencyHigh'] | dfr['StringencyMedium'] | dfr['StringencyLow']), True,
-    #                                 False)
-    # # create num of phages and non-phages for VOG. also "phages_only" "np_only" or "mixed"
-    # dfr['NumPhages'] = 0
-    # dfr['NumNonPhages'] = 0
-    # dfr['PhageNonphage'] = ''
-
-    # species_list_df.set_index("TaxonID", inplace=True)
-    # for index, row in dfr.iterrows():
-    #     num_nonphage = 0
-    #     num_phage = 0
-    #     p = row['Proteins'].split(",")
-    #     for protein in p:
-    #         species_id = protein.split('.')[0]
-    #         species_id = int(species_id)
-    #         if (species_list_df.loc[species_id])["Phage"]:
-    #             num_phage = num_phage + 1
-    #         else:
-    #             num_nonphage = num_nonphage + 1
-    #
-    #     dfr.at[index, 'NumPhages'] = num_phage
-    #     dfr.at[index, 'NumNonPhages'] = num_nonphage
-    #
-    #     if ((num_phage > 0) and (num_nonphage > 0)):
-    #         dfr.at[index, 'PhageNonphage'] = "mixed"
-    #     elif (num_phage > 0):
-    #         dfr.at[index, 'PhageNonphage'] = "phages_only"
-    #     else:
-    #         dfr.at[index, 'PhageNonphage'] = "np_only"
-    #
-    # # Handled via relationship
-    # dfr = dfr.drop(columns="Proteins")
 
     # create a table in the database
     dfr.to_sql(name='VOG_table', con=engine, if_exists='replace', index=True, chunksize=1000, dtype={
@@ -314,7 +281,38 @@ def generate_db(data_path, db_url):
     print("All tables optimized!")
 
 
+    # dfr['VirusSpecific'] = np.where((dfr['StringencyHigh'] | dfr['StringencyMedium'] | dfr['StringencyLow']), True,
+    #                                 False)
+    # # create num of phages and non-phages for VOG. also "phages_only" "np_only" or "mixed"
+    # dfr['NumPhages'] = 0
+    # dfr['NumNonPhages'] = 0
+    # dfr['PhageNonphage'] = ''
 
+    # species_list_df.set_index("TaxonID", inplace=True)
+    # for index, row in dfr.iterrows():
+    #     num_nonphage = 0
+    #     num_phage = 0
+    #     p = row['Proteins'].split(",")
+    #     for protein in p:
+    #         species_id = protein.split('.')[0]
+    #         species_id = int(species_id)
+    #         if (species_list_df.loc[species_id])["Phage"]:
+    #             num_phage = num_phage + 1
+    #         else:
+    #             num_nonphage = num_nonphage + 1
+    #
+    #     dfr.at[index, 'NumPhages'] = num_phage
+    #     dfr.at[index, 'NumNonPhages'] = num_nonphage
+    #
+    #     if ((num_phage > 0) and (num_nonphage > 0)):
+    #         dfr.at[index, 'PhageNonphage'] = "mixed"
+    #     elif (num_phage > 0):
+    #         dfr.at[index, 'PhageNonphage'] = "phages_only"
+    #     else:
+    #         dfr.at[index, 'PhageNonphage'] = "np_only"
+    #
+    # # Handled via relationship
+    # dfr = dfr.drop(columns="Proteins")
 
     #
     # #---------------------
