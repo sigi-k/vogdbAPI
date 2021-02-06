@@ -57,7 +57,7 @@ async def root():
 
 
 @api.get("/vsearch/species/",
-         response_model=List[Species_ID], summary="Species search")
+         response_class=PlainTextResponse, summary="Species search")
 async def search_species(
         db: Session = Depends(get_db),
         taxon_id: Optional[Set[int]] = Query(None),
@@ -74,7 +74,7 @@ async def search_species(
     with error_handling():
         log.debug("Received a vsearch/species request")
 
-        species = get_species(db, taxon_id, name, phage, source)
+        species = PlainTextResponse('\n'.join(get_species(db, taxon_id, name, phage, source)))
 
         if not species:
             log.info("No Species match the search criteria.")
