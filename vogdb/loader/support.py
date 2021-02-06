@@ -35,16 +35,197 @@ def generate_db(data_path, db_url):
         con.execute("DROP TABLE IF EXISTS Species_table;")
 
 
+
     # ---------------------
-    # Species_table generation
+    # VOG_table generation
     # ----------------------
+
+    # Load all data frames:
+
     # extract Species information from the list
     species_list_df = pd.read_csv(os.path.join(data_path, "vog.species.list"),
                                   sep='\t',
                                   header=0,
                                   names=['SpeciesName', 'TaxonID', 'Phage', 'Source', 'Version']) \
         .assign(Phage=lambda p: p.Phage == 'phage')
-    # create a species table in the database
+
+    # extract Protein information:
+    proteinfile = data_path + "vog.proteins.all.fa"
+    proteins = [[s.id, str(s.seq)] for s in SeqIO.parse(proteinfile, "fasta")]
+    df_aa = pd.DataFrame(proteins, columns=['ProteinID', 'AASeq']).set_index("ProteinID")
+
+    genefile = data_path + "vog.genes.all.fa"
+    genes = [[s.id, str(s.seq)] for s in SeqIO.parse(genefile, "fasta")]
+    df_nt = pd.DataFrame(genes, columns=['ProteinID', 'NTSeq']).set_index("ProteinID")
+
+    prot_df = df_aa.merge(df_nt, on='ProteinID', how='outer')
+    # place taxonID in a separate column
+    prot_df['TaxonID'] = prot_df['ProteinID'].str.split(".").str[0]
+
+
+    members = pd.read_csv(data_path + "vog.members.tsv.gz", compression='gzip',
+                          sep='\t',
+                          header=0,
+                          names=['VOG_ID', 'ProteinCount', 'SpeciesCount', 'FunctionalCategory', 'Proteins'],
+                          usecols=['VOG_ID', 'ProteinCount', 'SpeciesCount', 'FunctionalCategory', 'Proteins'],
+                          index_col='VOG_ID').assign(Proteins=lambda df: df.Proteins.apply(lambda s: set(s.split(","))))
+
+    # ---------------------------------------------------------
+    # ASSIGNING MEMBERSHIP:
+    def extract_membership(members):
+        """
+        Loads all vog<->protein relationships.
+        :param members data frame
+        """
+        data = [(v, p) for v, ps in members.Proteins.items() for p in ps]
+        return (
+            pd.DataFrame.from_records(data, columns=["VOG_ID", "ProteinID"])
+                .sort_values(["VOG_ID", "ProteinID"])
+                .reset_index(drop=True)
+        )
+
+    def extract_proteins(membership):
+        """
+        Extracts all distinct proteins from the membership table and associates them
+        with the taxid of their species.
+        """
+        unique_proteins = pd.Series(membership.ProteinID.unique())
+        species = unique_proteins.apply(lambda p: int(p.split(".")[0]))
+
+        return (
+            pd.DataFrame({"ProteinID": unique_proteins, "TaxonID": species})
+                .sort_values("ProteinID")
+                .set_index("ProteinID")
+        )
+
+    membership = extract_membership(members)
+
+    member_proteins = (
+        extract_proteins(membership).join(df_aa, how="left").join(df_nt, how="left")
+    )
+
+    protein_phage = member_proteins.TaxonID.map(species_list_df.Phage.apply(lambda s: 1 if s else 0))
+
+    annotations = pd.read_csv(data_path + "vog.annotations.tsv.gz", compression='gzip',
+                              sep='\t',
+                              header=0,
+                              names=['VOG_ID', 'ProteinCount', 'SpeciesCount', 'FunctionalCategory',
+                                     'Consensus_func_description'],
+                              usecols=['VOG_ID', 'Consensus_func_description'],
+                              index_col='VOG_ID')
+    # ---------------------------------------------------------
+
+    lca = pd.read_csv(data_path + 'vog.lca.tsv.gz', compression='gzip',
+                      sep='\t',
+                      header=0,
+                      names=['VOG_ID', 'GenomesInGroup', 'GenomesTotal', 'Ancestors'],
+                      index_col='VOG_ID')
+
+    virusonly = pd.read_csv(data_path + 'vog.virusonly.tsv.gz', compression='gzip',
+                            sep='\t',
+                            header=0,
+                            names=['VOG_ID', 'StringencyHigh', 'StringencyMedium', 'StringencyLow'],
+                            dtype={'StringencyHigh': bool, 'StringencyMedium': bool, 'StringencyLow': bool},
+                            index_col='VOG_ID')\
+        .assign(
+            VirusSpecific=lambda df: df.StringencyHigh
+            | df.StringencyMedium
+            | df.StringencyLow
+    )
+
+    dfr = (members.drop(columns="Proteins").join(annotations).join(lca).join(virusonly)
+        .assign(
+            NumPhages=membership.set_index("VOG_ID")
+            .ProteinID.map(protein_phage)
+            .groupby("VOG_ID")
+            .sum(),
+            NumNonPhages=membership.set_index("VOG_ID")
+            .ProteinID.map(1 - protein_phage)
+            .groupby("VOG_ID")
+            .sum(),
+            PhageNonphage=lambda df: (
+                np.sign(df.NumPhages) + 2 * np.sign(df.NumNonPhages)
+            ).map({1: "phages_only", 2: "np_only", 3: "mixed"}),
+        )
+    )
+
+    # dfr['VirusSpecific'] = np.where((dfr['StringencyHigh'] | dfr['StringencyMedium'] | dfr['StringencyLow']), True,
+    #                                 False)
+    # # create num of phages and non-phages for VOG. also "phages_only" "np_only" or "mixed"
+    # dfr['NumPhages'] = 0
+    # dfr['NumNonPhages'] = 0
+    # dfr['PhageNonphage'] = ''
+
+    # species_list_df.set_index("TaxonID", inplace=True)
+    # for index, row in dfr.iterrows():
+    #     num_nonphage = 0
+    #     num_phage = 0
+    #     p = row['Proteins'].split(",")
+    #     for protein in p:
+    #         species_id = protein.split('.')[0]
+    #         species_id = int(species_id)
+    #         if (species_list_df.loc[species_id])["Phage"]:
+    #             num_phage = num_phage + 1
+    #         else:
+    #             num_nonphage = num_nonphage + 1
+    #
+    #     dfr.at[index, 'NumPhages'] = num_phage
+    #     dfr.at[index, 'NumNonPhages'] = num_nonphage
+    #
+    #     if ((num_phage > 0) and (num_nonphage > 0)):
+    #         dfr.at[index, 'PhageNonphage'] = "mixed"
+    #     elif (num_phage > 0):
+    #         dfr.at[index, 'PhageNonphage'] = "phages_only"
+    #     else:
+    #         dfr.at[index, 'PhageNonphage'] = "np_only"
+    #
+    # # Handled via relationship
+    # dfr = dfr.drop(columns="Proteins")
+
+    # create a table in the database
+    dfr.to_sql(name='VOG_table', con=engine, if_exists='replace', index=True, chunksize=1000, dtype={
+        'VOG_ID': String(30),
+        'FunctionalCategory': String(30),
+        'Consensus_func_description': String(100),
+        'ProteinCount': Integer,
+        'SpeciesCount': Integer,
+        'GenomesInGroup': Integer,
+        'GenomesTotal': Integer,
+        'Ancestors': String(255),
+        'StringencyHigh': Boolean,
+        'StringencyMedium': Boolean,
+        'StringencyLow': Boolean,
+        'VirusSpecific': Boolean,
+        'NumPhages': Integer,
+        'NumNonPhages': Integer,
+        'PhageNonphage': String(32)
+    })
+
+    with engine.connect() as con:
+        con.execute("""
+           ALTER TABLE VOG_table
+               MODIFY VOG_ID varchar(30) NOT NULL PRIMARY KEY,
+               MODIFY FunctionalCategory varchar(30) NOT NULL,
+               MODIFY Consensus_func_description varchar(100) NOT NULL,
+               MODIFY ProteinCount int NOT NULL,
+               MODIFY SpeciesCount int NOT NULL,
+               MODIFY GenomesInGroup int NOT NULL,
+               MODIFY GenomesTotal int NOT NULL,
+               MODIFY Ancestors varchar(255) NULL,
+               MODIFY StringencyHigh bool NOT NULL,
+               MODIFY StringencyMedium bool NOT NULL,
+               MODIFY StringencyLow bool NOT NULL,
+               MODIFY VirusSpecific bool NOT NULL,
+               MODIFY NumPhages int NOT NULL,
+               MODIFY NumNonPhages int NOT NULL,
+               MODIFY PhageNonphage varchar(32) NOT NULL;
+           """)
+
+    print('VOG_table successfully created!')
+
+    # ---------------------
+    # Species_table generation
+    # ----------------------
 
     species_list_df.to_sql(name='Species_table', con=engine, if_exists='replace', index=False, chunksize=1000, dtype={
         'TaxonId': Integer,
@@ -71,24 +252,6 @@ def generate_db(data_path, db_url):
     # Protein_table generation
     # ----------------------
 
-    proteinfile = data_path + "vog.proteins.all.fa"
-    prot = []
-    for seq_record in SeqIO.parse(proteinfile, "fasta"):
-        prot.append([seq_record.id, str(seq_record.seq)])
-    df_aa = pd.DataFrame(prot, columns=['ProteinID', 'AASeq'])
-    df_aa.set_index("ProteinID")
-
-    genefile = data_path + "vog.genes.all.fa"
-    genes = []
-    for seq_record in SeqIO.parse(genefile, "fasta"):
-        genes.append([seq_record.id, str(seq_record.seq)])
-    df_nt = pd.DataFrame(genes, columns=['ProteinID', 'NTSeq'])
-    df_nt.set_index('ProteinID')
-
-    prot_df = df_aa.merge(df_nt, on='ProteinID', how='outer')
-
-    # place taxonID in a separate column
-    prot_df["TaxonID"] = prot_df["ProteinID"].str.split(".").str[0]
 
     # create a protein table in the database
     prot_df.to_sql(name='Protein_table', con=engine, if_exists='replace', index=False, chunksize=1000, dtype={
@@ -116,27 +279,6 @@ def generate_db(data_path, db_url):
     # ---------------------
     # Member Table generation
     # ----------------------
-    members = pd.read_csv(data_path + "vog.members.tsv.gz", compression='gzip',
-                          sep='\t',
-                          header=0,
-                          names=['VOG_ID', 'ProteinCount', 'SpeciesCount', 'FunctionalCategory', 'Proteins'],
-                          usecols=['VOG_ID', 'ProteinCount', 'SpeciesCount', 'FunctionalCategory', 'Proteins'],
-                          index_col='VOG_ID').assign(Proteins=lambda df: df.Proteins.apply(lambda s: set(s.split(","))))
-
-    # ASSIGNING MEMBERSHIP:
-    def extract_membership(members):
-        """
-        Loads all vog<->protein relationships.
-        :param members data frame
-        """
-        data = [(v, p) for v, ps in members.Proteins.items() for p in ps]
-        return (
-            pd.DataFrame.from_records(data, columns=["VOG_ID", "ProteinID"])
-                .sort_values(["VOG_ID", "ProteinID"])
-                .reset_index(drop=True)
-        )
-
-    membership = extract_membership(members)
 
     membership.to_sql(
         name="Member",
@@ -161,112 +303,17 @@ def generate_db(data_path, db_url):
 
     print("Member table created!")
 
+
     # ---------------------
-    # VOG_table generation
+    # Optimize tables:
     # ----------------------
-
-    annotations = pd.read_csv(data_path + "vog.annotations.tsv.gz", compression='gzip',
-                              sep='\t',
-                              header=0,
-                              names=['VOG_ID', 'ProteinCount', 'SpeciesCount', 'FunctionalCategory', 'Consensus_func_description'],
-                              usecols=['VOG_ID', 'Consensus_func_description'],
-                              index_col='VOG_ID')
-
-    #lca = pd.read_csv(os.path.join(data_path, 'vog.lca.tsv.gz'), compression='gzip',
-    lca = pd.read_csv(data_path + 'vog.lca.tsv.gz', compression='gzip',
-                      sep='\t',
-                      header=0,
-                      names=['VOG_ID', 'GenomesInGroup', 'GenomesTotal', 'Ancestors'],
-                      index_col='VOG_ID')
-
-    virusonly = pd.read_csv(data_path + 'vog.virusonly.tsv.gz', compression='gzip',
-                            sep='\t',
-                            header=0,
-                            names=['VOG_ID', 'StringencyHigh', 'StringencyMedium', 'StringencyLow'],
-                            dtype={'StringencyHigh': bool, 'StringencyMedium': bool, 'StringencyLow': bool},
-                            index_col='VOG_ID')
-
-    dfr = members.join(annotations).join(lca).join(virusonly)
-    dfr['VirusSpecific'] = np.where((dfr['StringencyHigh'] | dfr['StringencyMedium'] | dfr['StringencyLow']), True, False)
-
-
-    #create num of phages and non-phages for VOG. also "phages_only" "np_only" or "mixed"
-    dfr['NumPhages'] = 0
-    dfr['NumNonPhages'] = 0
-    dfr['PhageNonphage'] = ''
-
-    species_list_df.set_index("TaxonID", inplace=True)
-    for index, row in dfr.iterrows():
-        num_nonphage = 0
-        num_phage = 0
-        p = row['Proteins'].split(",")
-        for protein in p:
-            species_id = protein.split('.')[0]
-            species_id = int(species_id)
-            if (species_list_df.loc[species_id])["Phage"]:
-                num_phage = num_phage + 1
-            else:
-                num_nonphage = num_nonphage + 1
-
-        dfr.at[index, 'NumPhages'] = num_phage
-        dfr.at[index, 'NumNonPhages'] = num_nonphage
-
-        if ((num_phage > 0) and (num_nonphage > 0)):
-            dfr.at[index, 'PhageNonphage'] = "mixed"
-        elif (num_phage > 0):
-            dfr.at[index, 'PhageNonphage'] = "phages_only"
-        else:
-            dfr.at[index, 'PhageNonphage'] = "np_only"
-
-    # Handled via relationship
-    dfr = dfr.drop(columns="Proteins")
-
-    # create a table in the database
-    dfr.to_sql(name='VOG_table', con=engine, if_exists='replace', index=True, chunksize=1000, dtype={
-        'VOG_ID': String(30),
-        'FunctionalCategory': String(30),
-        'Consensus_func_description': String(100),
-        'ProteinCount': Integer,
-        'SpeciesCount': Integer,
-        'GenomesInGroup': Integer,
-        'GenomesTotal': Integer,
-        'Ancestors': String(255),
-        'StringencyHigh': Boolean,
-        'StringencyMedium': Boolean,
-        'StringencyLow': Boolean,
-        'VirusSpecific': Boolean,
-        'NumPhages': Integer,
-        'NumNonPhages': Integer,
-        'PhageNonphage': String(32)
-        })
-
-    with engine.connect() as con:
-        con.execute("""
-        ALTER TABLE VOG_table
-            MODIFY VOG_ID varchar(30) NOT NULL PRIMARY KEY,
-            MODIFY FunctionalCategory varchar(30) NOT NULL,
-            MODIFY Consensus_func_description varchar(100) NOT NULL,
-            MODIFY ProteinCount int NOT NULL,
-            MODIFY SpeciesCount int NOT NULL,
-            MODIFY GenomesInGroup int NOT NULL,
-            MODIFY GenomesTotal int NOT NULL,
-            MODIFY Ancestors varchar(255) NULL,
-            MODIFY StringencyHigh bool NOT NULL,
-            MODIFY StringencyMedium bool NOT NULL,
-            MODIFY StringencyLow bool NOT NULL,
-            MODIFY VirusSpecific bool NOT NULL,
-            MODIFY NumPhages int NOT NULL,
-            MODIFY NumNonPhages int NOT NULL,
-            MODIFY PhageNonphage varchar(32) NOT NULL;
-        """)
-
-    print('VOG_table successfully created!')
-
 
     with engine.connect() as con:
         con.execute("OPTIMIZE LOCAL TABLE Species_table, VOG__table, Protein_table, Mapping;")
 
     print("All tables optimized!")
+
+
 
 
     #
