@@ -60,10 +60,10 @@ async def root():
          response_class=PlainTextResponse, summary="Species search")
 async def search_species(
         db: Session = Depends(get_db),
-        taxon_id: Optional[Set[int]] = Query(None),
-        name: Optional[str] = None,
-        phage: Optional[bool] = None,
-        source: Optional[str] = None):
+        taxon_id: List[int] = Query(None),
+        name: List[str] = Query(None),
+        phage: Optional[bool] = Query(None),
+        source: Optional[str] = Query(None)):
     """
     This functions searches a database and returns a list of species IDs for records in that database
     which meet the search criteria.
@@ -73,8 +73,11 @@ async def search_species(
 
     with error_handling():
         log.debug("Received a vsearch/species request")
+        # speciess = get_species(db, taxon_id, name, phage, source)
+        # print(speciess)
+        species_list = [str(i[0]) for i in get_species(db, taxon_id, name, phage, source)]
 
-        species = PlainTextResponse('\n'.join(get_species(db, taxon_id, name, phage, source)))
+        species = PlainTextResponse('\n'.join(species_list))
 
         if not species:
             log.info("No Species match the search criteria.")
@@ -124,43 +127,44 @@ async def post_summary_species(body: List[Species_ID], db: Session = Depends(get
 
 
 @api.get("/vsearch/vog/",
-         response_model=List[VOG_UID], summary="VOG search")
+         response_class=PlainTextResponse, summary="VOG search")
 async def search_vog(
-        db: Session = Depends(get_db),
         id: Optional[Set[str]] = Query(None),
-        pmin: Optional[int] = None,
-        pmax: Optional[int] = None,
-        smax: Optional[int] = None,
-        smin: Optional[int] = None,
+        pmin: Optional[int] = Query(None),
+        pmax: Optional[int] = Query(None),
+        smax: Optional[int] = Query(None),
+        smin: Optional[int] = Query(None),
         functional_category: Optional[Set[str]] = Query(None),
         consensus_function: Optional[Set[str]] = Query(None),
-        mingLCA: Optional[int] = None,
-        maxgLCA: Optional[int] = None,
-        mingGLCA: Optional[int] = None,
-        maxgGLCA: Optional[int] = None,
+        mingLCA: Optional[int] = Query(None),
+        maxgLCA: Optional[int] = Query(None),
+        mingGLCA: Optional[int] = Query(None),
+        maxgGLCA: Optional[int] = Query(None),
         ancestors: Optional[Set[str]] = Query(None),
-        h_stringency: Optional[bool] = None,
-        m_stringency: Optional[bool] = None,
-        l_stringency: Optional[bool] = None,
-        virus_specific: Optional[bool] = None,
-        phages_nonphages: Optional[str] = None,
+        h_stringency: Optional[bool] = Query(None),
+        m_stringency: Optional[bool] = Query(None),
+        l_stringency: Optional[bool] = Query(None),
+        virus_specific: Optional[bool] = Query(None),
+        phages_nonphages: Optional[str] = Query(None),
         proteins: Optional[Set[str]] = Query(None),
         species: Optional[Set[str]] = Query(None),
         tax_id: Optional[Set[int]] = Query(None),
-        union: Optional[bool] = None):
+        union: Optional[bool] = None,
+        db: Session = Depends(get_db)):
     """
     This functions searches a database and returns a list of vog unique identifiers (UIDs) for records in that database
     which meet the search criteria.
     \f
-    :param id: a list of VOG IDs
     :return: A List of VOG IDs
     """
     with error_handling():
         log.debug("Received a vsearch/vog request")
 
-        vogs = get_vogs(db, id, pmin, pmax, smax, smin, functional_category, consensus_function,
+        vog_list = [str(i[0]) for i in get_vogs(db, id, pmin, pmax, smax, smin, functional_category, consensus_function,
                         mingLCA, maxgLCA, mingGLCA, maxgGLCA, ancestors, h_stringency, m_stringency, l_stringency,
-                        virus_specific, phages_nonphages, proteins, species, tax_id, union)
+                        virus_specific, phages_nonphages, proteins, species, tax_id, union)]
+
+        vogs = PlainTextResponse('\n'.join(vog_list))
 
         if not vogs:
             log.info("No VOGs match the search criteria.")
@@ -299,12 +303,11 @@ async def plain_vog_msa(id: str = Path(..., title="VOG id", min_length=8, regex=
 
 
 @api.get("/vsearch/protein/",
-         response_model=List[ProteinID], summary="Protein search")
-async def search_protein(
-        db: Session = Depends(get_db),
-        species_name: Optional[Set[str]] = Query(None),
-        taxon_id: Optional[Set[int]] = Query(None),
-        VOG_id: Optional[Set[str]] = Query(None)):
+         response_class=PlainTextResponse, summary="Protein search")
+async def search_protein(species_name: List[str] = Query(None),
+                         taxon_id: List[int] = Query(None),
+                         VOG_id: List[str] = Query(None),
+                         db: Session = Depends(get_db)):
     """
     This functions searches a database and returns a list of Protein IDs for records in the database
     matching the search criteria.
@@ -317,7 +320,9 @@ async def search_protein(
     with error_handling():
         log.debug("Received a vsearch/protein request")
 
-        proteins = get_proteins(db, species_name, taxon_id, VOG_id)
+        protein_list = [str(i[0]) for i in get_proteins(db, species_name, taxon_id, VOG_id)]
+
+        proteins = PlainTextResponse('\n'.join(protein_list))
 
         if not proteins:
             log.debug("No Proteins match the search criteria.")

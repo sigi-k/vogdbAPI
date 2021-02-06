@@ -30,8 +30,8 @@ if those two criteria are not fulfilled, pydantic will throw an ValidationError
 
 
 def get_species(db: Session,
-                taxon_id: Optional[List[int]],
-                species_name: Optional[List[str]],
+                taxon_id: List[int],
+                species_name: List[str],
                 phage: Optional[bool],
                 source: Optional[str]):
     """
@@ -255,9 +255,9 @@ def find_vogs_by_uid(db: Session, ids: Optional[List[str]]):
 
 
 def get_proteins(db: Session,
-                 species: Optional[List[str]],
-                 taxon_id: Optional[List[int]],
-                 vog_id: Optional[List[str]]):
+                 species: List[str],
+                 taxon_id: List[int],
+                 vog_id: List[str]):
     """
     This function searches the for proteins based on the given query parameters
     """
