@@ -30,7 +30,6 @@ class VOG_profile(Base):
     phages_nonphages = Column('PhageNonphage', String(32), nullable=False)
 
     proteins = relationship('Table_mapping', back_populates='vog', lazy='selectin')
-    # prots = relationship("Protein_profile", back_populates="species", lazy="selectin")
 
 
 class Species_profile(Base):

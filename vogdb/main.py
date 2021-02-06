@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from fastapi import Depends, FastAPI, Query, Path, HTTPException
 from fastapi.responses import PlainTextResponse
 from .schemas import *
-from . import models
 import logging
 
 # configuring logging
@@ -56,7 +55,7 @@ async def root():
     return {"message": "Welcome to the VOGDB-API"}
 
 
-@api.get("/vsearch/species/",
+@api.get("/vsearch/species",
          response_class=PlainTextResponse, summary="Species search")
 async def search_species(
         db: Session = Depends(get_db),
@@ -87,7 +86,7 @@ async def search_species(
         return species
 
 
-@api.get("/vsummary/species/",
+@api.get("/vsummary/species",
          response_model=List[Species_profile], summary="Species summary")
 async def get_summary_species(taxon_id: Optional[List[int]] = Query(None), db: Session = Depends(get_db)):
     """
@@ -113,7 +112,7 @@ async def get_summary_species(taxon_id: Optional[List[int]] = Query(None), db: S
         return species_summary
 
 
-@api.post("/vsummary/species/",
+@api.post("/vsummary/species",
           response_model=List[Species_profile], summary="Species summary")
 async def post_summary_species(body: List[Species_ID], db: Session = Depends(get_db)):
     """
@@ -126,7 +125,7 @@ async def post_summary_species(body: List[Species_ID], db: Session = Depends(get
     return await get_summary_species([s.taxon_id for s in body], db)
 
 
-@api.get("/vsearch/vog/",
+@api.get("/vsearch/vog",
          response_class=PlainTextResponse, summary="VOG search")
 async def search_vog(
         id: Optional[Set[str]] = Query(None),
@@ -174,7 +173,7 @@ async def search_vog(
         return vogs
 
 
-@api.get("/vsummary/vog/",
+@api.get("/vsummary/vog",
          response_model=List[VOG_profile], summary="VOG summary")
 async def get_summary_vog(id: List[str] = Query(None), db: Session = Depends(get_db)):
     """
@@ -197,7 +196,7 @@ async def get_summary_vog(id: List[str] = Query(None), db: Session = Depends(get
         return vog_summary
 
 
-@api.post("/vsummary/vog/",
+@api.post("/vsummary/vog",
           response_model=List[VOG_profile], summary="VOG summary")
 async def post_summary_species(body: List[VOG_UID], db: Session = Depends(get_db)):
     """
@@ -241,8 +240,9 @@ async def post_fetch_vog_hmm(body: List[VOG_UID]):
     return await get_fetch_vog_hmm([vog.id for vog in body])
 
 
-@api.get("/vfetch/vog/msa", response_model=Dict[str, str], summary="VOG MSA fetch")
-async def get_fetch_vog_msa(id: List[str] = Query(None)):
+#ToDo: ids required here
+@api.get("/vfetch/vog/msa/{id}", response_model=Dict[str, str], summary="VOG MSA fetch")
+async def get_fetch_vog_msa(id: List[str] = Path(..., title="VOG id", min_length=8, regex="^VOG\d+$")):
     """
     This function returns the Multiple Sequence Alignment (MSA) for a list of unique identifiers (UIDs)
     \f
@@ -302,7 +302,7 @@ async def plain_vog_msa(id: str = Path(..., title="VOG id", min_length=8, regex=
             raise HTTPException(404, "Not found")
 
 
-@api.get("/vsearch/protein/",
+@api.get("/vsearch/protein",
          response_class=PlainTextResponse, summary="Protein search")
 async def search_protein(species_name: List[str] = Query(None),
                          taxon_id: List[int] = Query(None),
@@ -332,7 +332,7 @@ async def search_protein(species_name: List[str] = Query(None),
         return proteins
 
 
-@api.get("/vsummary/protein/",
+@api.get("/vsummary/protein",
          response_model=List[Protein_profile], summary="Protein summary")
 async def get_summary_protein(id: List[str] = Query(None), db: Session = Depends(get_db)):
     """

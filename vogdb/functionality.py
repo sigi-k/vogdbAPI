@@ -286,7 +286,7 @@ def find_proteins_by_id(db: Session, pids: List[str]):
     if pids:
         log.debug("Searching Proteins by ProteinIDs in the database...")
 
-        return db.query(Table_mapping).filter(Table_mapping.id.in_(pids)).all()
+        return db.query(Protein_profile).filter(Protein_profile.id.in_(pids)).all()
     else:
         log.debug("No IDs were given.")
 
