@@ -240,9 +240,8 @@ async def post_fetch_vog_hmm(body: List[VOG_UID]):
     return await get_fetch_vog_hmm([vog.id for vog in body])
 
 
-#ToDo: ids required here
-@api.get("/vfetch/vog/msa/{id}", response_model=Dict[str, str], summary="VOG MSA fetch")
-async def get_fetch_vog_msa(id: List[str] = Path(..., title="VOG id", min_length=8, regex="^VOG\d+$")):
+@api.get("/vfetch/vog/msa", response_model=Dict[str, str], summary="VOG MSA fetch")
+async def get_fetch_vog_msa(id: List[str] = Query(None)):
     """
     This function returns the Multiple Sequence Alignment (MSA) for a list of unique identifiers (UIDs)
     \f

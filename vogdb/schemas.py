@@ -79,6 +79,7 @@ class Species_base(Species_ID):
     class Config:
         orm_mode = True
 
+
 class Species_profile(Species_base):
     proteins: List[ProteinID]
     prots: List[ProteinID]
