@@ -349,7 +349,7 @@ async def get_summary_protein(id: List[str] = Query(None), db: Session = Depends
         if not protein_summary:
             log.debug("No matching Proteins found")
         else:
-            log.dubug("Protein summaries have been retrieved.")
+            log.debug("Protein summaries have been retrieved.")
 
         return protein_summary
 
@@ -418,7 +418,7 @@ async def get_fetch_protein_fna(id: List[str] = Query(None), db: Session = Depen
     with error_handling():
         log.debug("Received a vfetch/protein/fna request")
 
-        protein_fna = find_protein_faa_by_id(db, id)
+        protein_fna = find_protein_fna_by_id(db, id)
 
         if not len(protein_fna) == len(id):
             log.warning("At least one of the proteins was not found, or there were duplicates.\n"

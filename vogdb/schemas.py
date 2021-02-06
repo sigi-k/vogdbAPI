@@ -71,18 +71,27 @@ class VOG_profile(VOG_base):
 
 
 class Species_base(Species_ID):
+    species_name: str
+    phage: str
+    source: str
+    version: int
+
+    class Config:
+        orm_mode = True
+
+class Species_profile(Species_base):
     proteins: List[ProteinID]
+    prots: List[ProteinID]
 
     class Config:
         orm_mode = True
 
 
 class Protein_profile(ProteinID):
-    vog_id: str
-    taxon_id: int
-    species_name: str
     # aa_seq: str
     # nt_seq: str
+    vog: VOG_base
+    species: Species_base
 
     class Config:
         orm_mode = True
