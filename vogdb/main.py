@@ -52,7 +52,9 @@ def get_db():
 
 @api.get("/", summary="Welcome!")
 async def root():
-    return {"message": "Welcome to the VOGDB-API"}
+    # Todo: get version from the Species_table
+    version = 202
+    return {"message": f"Welcome to the VOGDB-API. Version = {version}"}
 
 
 @api.get("/vsearch/species",

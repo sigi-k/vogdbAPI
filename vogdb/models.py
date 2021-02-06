@@ -5,13 +5,12 @@ from .database import Base
 
 """
 "model" refers to classes and instances that interact with the database.
-A model is equivalent to a database table e.g. VOG_profile table and it contains all the same attributes
+A model is equivalent to a database table e.g. VOG_table and it contains all the same attributes
 """
 
 
-class VOG_profile(Base):
-    # mysql table name
-    __tablename__ = "VOG_profile"
+class VOG_table(Base):
+    __tablename__ = "VOG_table"
 
     id = Column('VOG_ID', String(30), primary_key=True)
     protein_count = Column('ProteinCount', Integer, nullable=False)
@@ -29,12 +28,12 @@ class VOG_profile(Base):
     num_nonphages = Column('NumNonPhages', Integer, nullable=False)
     phages_nonphages = Column('PhageNonphage', String(32), nullable=False)
 
-    proteins = relationship('Table_mapping', back_populates='vog', lazy='selectin')
+    proteins = relationship('Protein_table', secondary='Member', back_populates='vogs')
+    members = relationship('Member', back_populates='vog', lazy='selectin')
 
 
-class Species_profile(Base):
-    # mysql table name
-    __tablename__ = "Species_profile"
+class Species_table(Base):
+    __tablename__ = "Species_table"
 
     taxon_id = Column('TaxonID', Integer, primary_key=True)
     species_name = Column('SpeciesName', String(100), nullable=False)
@@ -42,30 +41,28 @@ class Species_profile(Base):
     source = Column('Source', String(100), nullable=False)
     version = Column('Version', Integer, nullable=False)
 
-    proteins = relationship("Table_mapping", back_populates="species", lazy="selectin")
-    prots = relationship("Protein_profile", back_populates="species", lazy="selectin")
+    proteins = relationship("rotein_table", back_populates="species", lazy="selectin")
 
 
-class Table_mapping(Base):
-    # mysql table name
-    __tablename__ = "Table_mapping"
+class Protein_table(Base):
+    __tablename__ = "Protein_table"
 
     id = Column('ProteinID', String(30), nullable=False, index=True, primary_key=True)
-    vog_id = Column('VOG_ID', String(30), ForeignKey("VOG_profile.VOG_ID"), nullable=False, index=True, primary_key=True)
-    taxon_id = Column('TaxonID', Integer,  ForeignKey("Species_profile.TaxonID"), nullable=False, index=True)
-
-    vog = relationship("VOG_profile", back_populates="proteins", lazy="joined")
-    species = relationship("Species_profile", back_populates="proteins", lazy="joined")
-
-
-class Protein_profile(Base):
-    # mysql table name
-    __tablename__ = "Protein_profile"
-
-    id = Column('ProteinID', String(30), nullable=False, index=True, primary_key=True)
-    taxon_id = Column('TaxonID', Integer,  ForeignKey("Species_profile.TaxonID"), nullable=False, index=True)
+    taxon_id = Column('TaxonID', Integer,  ForeignKey("Species_table.TaxonID"), nullable=False, index=True)
     aa_seq = Column('AASeq', String(65000), nullable=True)
     nt_seq = Column('NTSeq', String(65000), nullable=True)
 
-    # vog = relationship('VOG_profile', back_populates='prots', lazy='joined')
-    species = relationship("Species_profile", back_populates="prots", lazy="joined")
+    species = relationship("Species_table", back_populates="proteins", lazy="joined")
+    vog = relationship('VOG_table', secondary='Member', back_populates='proteins')
+    members = relationship('Member', back_populates='protein', lazy='selectin')
+
+
+class Member(Base):
+    __tablename__ = "Member"
+
+    vog_id = Column('VOG_ID', String(30), ForeignKey('VOG_table.VOG_ID'), primary_key=True)
+    protein_id = Column('ProteinID', String(30), ForeignKey('Protein_table.ProteinID'), primary_key=True)
+
+    vog = relationship("VOG_table", back_populates="members", lazy="joined")
+    protein = relationship("Protein_table", back_populates="members", lazy="joined")
+

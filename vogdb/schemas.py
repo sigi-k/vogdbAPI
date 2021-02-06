@@ -91,7 +91,7 @@ class Species_profile(Species_base):
 class Protein_profile(ProteinID):
     # aa_seq: str
     # nt_seq: str
-    vog: VOG_base
+    vogs: List[VOG_base]
     species: Species_base
 
     class Config:

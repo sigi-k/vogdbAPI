@@ -18,14 +18,22 @@ def generate_db(data_path, db_url):
     engine = create_engine(db_url)
 
     with engine.connect() as con:
+        # In case there are old tables:
         con.execute("DROP TABLE IF EXISTS NT_seq;")
         con.execute("DROP TABLE IF EXISTS AA_seq;")
         # Todo: Take out the dropping Protein_info
         con.execute("DROP TABLE IF EXISTS Protein_table;")
         con.execute("DROP TABLE IF EXISTS Protein_profile;")
         con.execute("DROP TABLE IF EXISTS Table_mapping;")
+        con.execute("DROP TABLE IF EXISTS Member;")
         con.execute("DROP TABLE IF EXISTS VOG_profile;")
         con.execute("DROP TABLE IF EXISTS Species_profile;")
+        # for the new tables:
+        con.execute("DROP TABLE IF EXISTS Protein_table;")
+        con.execute("DROP TABLE IF EXISTS Member;")
+        con.execute("DROP TABLE IF EXISTS VOG_table;")
+        con.execute("DROP TABLE IF EXISTS Species_table;")
+
 
     # ---------------------
     # Species_table generation
@@ -38,7 +46,7 @@ def generate_db(data_path, db_url):
         .assign(Phage=lambda p: p.Phage == 'phage')
     # create a species table in the database
 
-    species_list_df.to_sql(name='Species_profile', con=engine, if_exists='replace', index=False, chunksize=1000, dtype={
+    species_list_df.to_sql(name='Species_table', con=engine, if_exists='replace', index=False, chunksize=1000, dtype={
         'TaxonId': Integer,
         'SpeciesName': String(100),
         'Phage': Boolean,
@@ -48,7 +56,7 @@ def generate_db(data_path, db_url):
 
     with engine.connect() as con:
         con.execute("""
-        ALTER TABLE Species_profile 
+        ALTER TABLE Species_table 
             MODIFY TaxonID int NOT NULL PRIMARY KEY,
             MODIFY SpeciesName varchar(100) NOT NULL,
             MODIFY Phage bool NOT NULL,
@@ -56,12 +64,11 @@ def generate_db(data_path, db_url):
             MODIFY Version int NOT NULL;
         """)
 
-    # ToDo add foreign key to connect tax_id in protein_profile and species_profile? create index?
 
-    print('Species_profile table successfully created!')
+    print('Species_table table successfully created!')
 
     # ---------------------
-    # Protein_profile generation
+    # Protein_table generation
     # ----------------------
 
     proteinfile = data_path + "vog.proteins.all.fa"
@@ -84,7 +91,7 @@ def generate_db(data_path, db_url):
     prot_df["TaxonID"] = prot_df["ProteinID"].str.split(".").str[0]
 
     # create a protein table in the database
-    prot_df.to_sql(name='Protein_profile', con=engine, if_exists='replace', index=False, chunksize=1000, dtype={
+    prot_df.to_sql(name='Protein_table', con=engine, if_exists='replace', index=False, chunksize=1000, dtype={
         'ProteinID': String(30),
         'TaxonID': Integer,
         'AASeq': Text(65000),
@@ -93,28 +100,70 @@ def generate_db(data_path, db_url):
 
     with engine.connect() as con:
         con.execute("""
-        ALTER TABLE Protein_profile
+        ALTER TABLE Protein_table
             MODIFY ProteinID varchar(30) NOT NULL PRIMARY KEY,
             MODIFY TaxonID int NOT NULL,
-            MODIFY AASeq mediumtext,
-            MODIFY NTSeq mediumtext,
-            ADD FOREIGN KEY(TaxonID) REFERENCES Species_profile(TaxonID),
+            MODIFY AASeq mediumtext NULL,
+            MODIFY NTSeq mediumtext NULL,
+            ADD FOREIGN KEY(TaxonID) REFERENCES Species_table(TaxonID),
             ADD INDEX(ProteinID),
             ADD INDEX(TaxonID);
         """)
 
-    print('Protein_profile table successfully created!')
+    print('Protein_table table successfully created!')
 
 
     # ---------------------
-    # VOG_table generation
+    # Member Table generation
     # ----------------------
     members = pd.read_csv(data_path + "vog.members.tsv.gz", compression='gzip',
                           sep='\t',
                           header=0,
                           names=['VOG_ID', 'ProteinCount', 'SpeciesCount', 'FunctionalCategory', 'Proteins'],
                           usecols=['VOG_ID', 'ProteinCount', 'SpeciesCount', 'FunctionalCategory', 'Proteins'],
-                          index_col='VOG_ID')
+                          index_col='VOG_ID').assign(Proteins=lambda df: df.Proteins.apply(lambda s: set(s.split(","))))
+
+    # ASSIGNING MEMBERSHIP:
+    def extract_membership(members):
+        """
+        Loads all vog<->protein relationships.
+        :param members data frame
+        """
+        data = [(v, p) for v, ps in members.Proteins.items() for p in ps]
+        return (
+            pd.DataFrame.from_records(data, columns=["VOG_ID", "ProteinID"])
+                .sort_values(["VOG_ID", "ProteinID"])
+                .reset_index(drop=True)
+        )
+
+    membership = extract_membership(members)
+
+    membership.to_sql(
+        name="Member",
+        con=engine,
+        if_exists="replace",
+        index=False,
+        chunksize=1000,
+        dtype={"VOG_ID": String(30), "ProteinID": String(30)},
+    )
+
+    with engine.connect() as con:
+        con.execute(
+            """
+        ALTER TABLE Member  
+            MODIFY VOG_ID varchar(30) NOT NULL,
+            MODIFY ProteinID varchar(30) NOT NULL,
+            ADD PRIMARY KEY(VOG_ID, ProteinID),
+            ADD FOREIGN KEY(VOG_ID) REFERENCES VOG_table(VOG_ID),
+            ADD FOREIGN KEY(ProteinID) REFERENCES Protein_table(ProteinID);
+        """
+        )
+
+    print("Member table created!")
+
+    # ---------------------
+    # VOG_table generation
+    # ----------------------
 
     annotations = pd.read_csv(data_path + "vog.annotations.tsv.gz", compression='gzip',
                               sep='\t',
@@ -173,7 +222,7 @@ def generate_db(data_path, db_url):
     dfr = dfr.drop(columns="Proteins")
 
     # create a table in the database
-    dfr.to_sql(name='VOG_profile', con=engine, if_exists='replace', index=True, chunksize=1000, dtype={
+    dfr.to_sql(name='VOG_table', con=engine, if_exists='replace', index=True, chunksize=1000, dtype={
         'VOG_ID': String(30),
         'FunctionalCategory': String(30),
         'Consensus_func_description': String(100),
@@ -193,7 +242,7 @@ def generate_db(data_path, db_url):
 
     with engine.connect() as con:
         con.execute("""
-        ALTER TABLE VOG_profile
+        ALTER TABLE VOG_table
             MODIFY VOG_ID varchar(30) NOT NULL PRIMARY KEY,
             MODIFY FunctionalCategory varchar(30) NOT NULL,
             MODIFY Consensus_func_description varchar(100) NOT NULL,
@@ -214,55 +263,54 @@ def generate_db(data_path, db_url):
     print('VOG_table successfully created!')
 
 
-    #---------------------
-    # Table_mapping generation
-    #----------------------
-
-    # extract proteins for each VOG
-    protein_list_df = pd.read_csv(data_path + "vog.members.tsv.gz", compression='gzip', sep='\t').iloc[:, [0, 4]]
-
-    protein_list_df = protein_list_df.rename(columns={"#GroupName": "VOG_ID", "ProteinIDs": "ProteinID"})
-
-    # assign each protein a vog
-    protein_list_df = (protein_list_df["ProteinID"].str.split(",").apply(lambda x: pd.Series(x))
-                       .stack()
-                       .reset_index(level=1, drop=True)
-                       .to_frame("ProteinID")
-                       .join(protein_list_df[["VOG_ID"]], how="left")
-                       )
-    protein_list_df.set_index("ProteinID")
-
-    # separate protein and taxonID into separate columns
-    protein_list_df["TaxonID"] = protein_list_df["ProteinID"].str.split(".").str[0]
-
-    # create a protein table in the database
-    protein_list_df.to_sql(name='Table_mapping', con=engine, if_exists='replace', index=False, chunksize=1000, dtype={
-        'ProteinID': String(30),
-        'VOG_ID': String(30),
-        'TaxonID': Integer
-    })
-
     with engine.connect() as con:
-        con.execute("""
-        ALTER TABLE Table_mapping  
-            MODIFY ProteinID varchar(30) NOT NULL,
-            MODIFY TaxonID int NOT NULL,
-            MODIFY VOG_ID varchar(30) NOT NULL,
-            ADD PRIMARY KEY(VOG_ID, ProteinID),
-            ADD FOREIGN KEY(VOG_ID) REFERENCES VOG_profile(VOG_ID),
-            ADD FOREIGN KEY(TaxonID) REFERENCES Species_profile(TaxonID),
-            ADD INDEX(VOG_ID),
-            ADD INDEX(ProteinID),
-            ADD INDEX(TaxonID);
-        """)
-
-    print('Table_mapping table successfully created!')
-
-
-    with engine.connect() as con:
-        con.execute("OPTIMIZE LOCAL TABLE Species_profile, VOG_profile, Protein_profile, Table_mapping;")
+        con.execute("OPTIMIZE LOCAL TABLE Species_table, VOG__table, Protein_table, Mapping;")
 
     print("All tables optimized!")
+
+
+    #
+    # #---------------------
+    # # Table_mapping generation
+    # #----------------------
+    #
+    # # extract proteins for each VOG
+    # protein_list_df = pd.read_csv(data_path + "vog.members.tsv.gz", compression='gzip', sep='\t').iloc[:, [0, 4]]
+    #
+    # protein_list_df = protein_list_df.rename(columns={"#GroupName": "VOG_ID", "ProteinIDs": "ProteinID"})
+    #
+    # # assign each protein a vog
+    # protein_list_df = (protein_list_df["ProteinID"].str.split(",").apply(lambda x: pd.Series(x))
+    #                    .stack()
+    #                    .reset_index(level=1, drop=True)
+    #                    .to_frame("ProteinID")
+    #                    .join(protein_list_df[["VOG_ID"]], how="left")
+    #                    )
+    # protein_list_df.set_index("ProteinID")
+    #
+    # # separate protein and taxonID into separate columns
+    # protein_list_df["TaxonID"] = protein_list_df["ProteinID"].str.split(".").str[0]
+    #
+    # # create a protein table in the database
+    # protein_list_df.to_sql(name='Table_mapping', con=engine, if_exists='replace', index=False, chunksize=1000, dtype={
+    #     'ProteinID': String(30),
+    #     'VOG_ID': String(30),
+    #     'TaxonID': Integer
+    # })
+    #
+    # with engine.connect() as con:
+    #     con.execute("""
+    #     ALTER TABLE Table_mapping
+    #         MODIFY ProteinID varchar(30) NOT NULL,
+    #         MODIFY VOG_ID varchar(30) NOT NULL,
+    #         ADD PRIMARY KEY(VOG_ID, ProteinID),
+    #         ADD FOREIGN KEY(VOG_ID) REFERENCES VOG_profile(VOG_ID),
+    #         ADD FOREIGN KEY(ProteinID) REFERENCES Protein_profile(ProteinID);
+    #         ADD INDEX(VOG_ID),
+    #         ADD INDEX(ProteinID);
+    #     """)
+    #
+    # print('Table_mapping table successfully created!')
 
 
     #
