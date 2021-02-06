@@ -1,16 +1,22 @@
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, Table
 from sqlalchemy.types import Boolean, Integer, String, Text
 from sqlalchemy.orm import relationship
 from .database import Base
 
 """
 "model" refers to classes and instances that interact with the database.
-A model is equivalent to a database table e.g. VOG_table and it contains all the same attributes
+A model is equivalent to a database table e.g. VOG table and it contains all the same attributes
 """
 
+# Member is an m:n association table, we dont want to expose it
 
-class VOG_table(Base):
-    __tablename__ = "VOG_table"
+#_member = Table('Member', Base.metadata,
+#    Column('VOG_ID', String(30), ForeignKey('VOG.VOG_ID'), primary_key=True),
+#    Column('ProteinID', String(30), ForeignKey('Protein.ProteinID'), primary_key=True)
+#)
+
+class VOG(Base):
+    __tablename__ = "VOG"
 
     id = Column('VOG_ID', String(30), primary_key=True)
     protein_count = Column('ProteinCount', Integer, nullable=False)
@@ -28,12 +34,12 @@ class VOG_table(Base):
     num_nonphages = Column('NumNonPhages', Integer, nullable=False)
     phages_nonphages = Column('PhageNonphage', String(32), nullable=False)
 
-    proteins = relationship('Protein_table', secondary='Member', back_populates='vogs')
+    proteins = relationship('Protein', secondary='Member', back_populates='vogs')
     members = relationship('Member', back_populates='vog', lazy='selectin')
 
 
-class Species_table(Base):
-    __tablename__ = "Species_table"
+class Species(Base):
+    __tablename__ = "Species"
 
     taxon_id = Column('TaxonID', Integer, primary_key=True)
     species_name = Column('SpeciesName', String(100), nullable=False)
@@ -41,28 +47,27 @@ class Species_table(Base):
     source = Column('Source', String(100), nullable=False)
     version = Column('Version', Integer, nullable=False)
 
-    proteins = relationship("rotein_table", back_populates="species", lazy="selectin")
+    proteins = relationship("Protein", back_populates="species", lazy="selectin")
 
 
-class Protein_table(Base):
-    __tablename__ = "Protein_table"
+class Protein(Base):
+    __tablename__ = "Protein"
 
     id = Column('ProteinID', String(30), nullable=False, index=True, primary_key=True)
-    taxon_id = Column('TaxonID', Integer,  ForeignKey("Species_table.TaxonID"), nullable=False, index=True)
-    aa_seq = Column('AASeq', String(65000), nullable=True)
-    nt_seq = Column('NTSeq', String(65000), nullable=True)
+    taxon_id = Column('TaxonID', Integer,  ForeignKey("Species.TaxonID"), nullable=False, index=True)
+    aa_seq = Column('AAseq', Text(65000), nullable=True)
+    nt_seq = Column('NTseq', Text(65000), nullable=True)
 
-    species = relationship("Species_table", back_populates="proteins", lazy="joined")
-    vog = relationship('VOG_table', secondary='Member', back_populates='proteins')
+    species = relationship("Species", back_populates="proteins", lazy="joined")
+    vogs = relationship('VOG', secondary='Member', back_populates='proteins')
     members = relationship('Member', back_populates='protein', lazy='selectin')
 
 
 class Member(Base):
     __tablename__ = "Member"
 
-    vog_id = Column('VOG_ID', String(30), ForeignKey('VOG_table.VOG_ID'), primary_key=True)
-    protein_id = Column('ProteinID', String(30), ForeignKey('Protein_table.ProteinID'), primary_key=True)
+    vog_id = Column('VOG_ID', String(30), ForeignKey('VOG.VOG_ID'), primary_key=True)
+    protein_id = Column('ProteinID', String(30), ForeignKey('Protein.ProteinID'), primary_key=True)
 
-    vog = relationship("VOG_table", back_populates="members", lazy="joined")
-    protein = relationship("Protein_table", back_populates="members", lazy="joined")
-
+    vog = relationship("VOG", back_populates="members", lazy="joined")
+    protein = relationship("Protein", back_populates="members", lazy="joined")

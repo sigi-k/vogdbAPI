@@ -5,7 +5,7 @@ from typing import Dict, Optional, Set, List
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from .models import Species_table, VOG_table, Protein_table, Member
+from .models import VOG, Species, Protein, Member
 from .taxa import ncbi_taxa
 
 # get logger:
@@ -39,22 +39,22 @@ def get_species(db: Session,
     """
     log.debug("Searching Species in the database...")
 
-    query = db.query(Species_table.taxon_id)
+    query = db.query(Species.taxon_id)
 
     if taxon_id:
-        query = query.filter(Species_table.taxon_id.in_(set(taxon_id)))
+        query = query.filter(Species.taxon_id.in_(set(taxon_id)))
 
     if species_name:
         for name in set(species_name):
-            query = query.filter(Species_table.species_name.like("%" + name + "%"))
+            query = query.filter(Species.species_name.like("%" + name + "%"))
 
     if phage is not None:
-        query = query.filter(Species_table.phage == phage)
+        query = query.filter(Species.phage == phage)
 
     if source:
-        query = query.filter(Species_table.source.like("%" + source + "%"))
+        query = query.filter(Species.source.like("%" + source + "%"))
 
-    return query.order_by(Species_table.taxon_id).all()
+    return query.order_by(Species.taxon_id).all()
 
 
 def find_species_by_id(db: Session, ids: List[int]):
@@ -63,7 +63,7 @@ def find_species_by_id(db: Session, ids: List[int]):
     """
     if ids:
         log.debug("Searching Species by IDs in the database...")
-        return db.query(Species_table).filter(Species_table.taxon_id.in_(ids)).all()
+        return db.query(Species).filter(Species.taxon_id.in_(ids)).all()
     else:
         log.debug("No IDs were given.")
         return list()
@@ -96,7 +96,7 @@ def get_vogs(db: Session,
     """
     log.info("Searching VOGs in the database...")
 
-    result = db.query(VOG_table.id)
+    result = db.query(VOG.id)
 
     # make checks for validity of user input:
     def check_validity(pair):
@@ -117,8 +117,6 @@ def get_vogs(db: Session,
             if number < 1:
                 raise ValueError('Provided number: %s has to be > 0.' % number)
 
-    # create a warning in the log file if "union" is specified but no species/taxIDs given to use the parameter
-    #ToDo: What type of error here?
     if union is True:
         if species is None and tax_id is None:
             log.error("The 'Union' Parameter was provided, but no species or taxonomy IDs were provided.")
@@ -131,102 +129,97 @@ def get_vogs(db: Session,
             raise ValueError("The 'Union' Parameter was provided, but the number of taxonomy IDs is smaller than 2.")
 
     if id:
-        result = result.filter(VOG_table.id.in_(id))
+        result = result.filter(VOG.id.in_(id))
 
     if consensus_function:
         for d in set(consensus_function):
-            result = result.filter(VOG_table.consensus_function.like("%" + d + "%"))
+            result = result.filter(VOG.consensus_function.like("%" + d + "%"))
 
     if function:
         for d in set(function):
-            result = result.filter(VOG_table.function.like("%" + d + "%"))
+            result = result.filter(VOG.function.like("%" + d + "%"))
 
     if smin is not None:
-        result = result.filter(VOG_table.species_count >= smin)
+        result = result.filter(VOG.species_count >= smin)
     if smax is not None:
-        result = result.filter(VOG_table.species_count <= smax)
+        result = result.filter(VOG.species_count <= smax)
 
     if pmin is not None:
-        result = result.filter(VOG_table.protein_count >= pmin)
+        result = result.filter(VOG.protein_count >= pmin)
     if pmax is not None:
-        result = result.filter(VOG_table.protein_count <= pmax)
+        result = result.filter(VOG.protein_count <= pmax)
 
     if mingLCA is not None:
-        result = result.filter(VOG_table.genomes_total_in_LCA >= mingLCA)
+        result = result.filter(VOG.genomes_total_in_LCA >= mingLCA)
     if maxgLCA is not None:
-        result = result.filter(VOG_table.genomes_total_in_LCA <= maxgLCA)
+        result = result.filter(VOG.genomes_total_in_LCA <= maxgLCA)
 
     if mingGLCA is not None:
-        result = result.filter(VOG_table.genomes_in_group >= mingGLCA)
+        result = result.filter(VOG.genomes_in_group >= mingGLCA)
     if maxgGLCA is not None:
-        result = result.filter(VOG_table.genomes_in_group <= maxgGLCA)
+        result = result.filter(VOG.genomes_in_group <= maxgGLCA)
 
     if h_stringency is not None:
-        result = result.filter(VOG_table.h_stringency == h_stringency)
+        result = result.filter(VOG.h_stringency == h_stringency)
     if m_stringency is not None:
-        result = result.filter(VOG_table.m_stringency == m_stringency)
+        result = result.filter(VOG.m_stringency == m_stringency)
     if l_stringency is not None:
-        result = result.filter(VOG_table.l_stringency == l_stringency)
+        result = result.filter(VOG.l_stringency == l_stringency)
     if virus_specific is not None:
-        result = result.filter(VOG_table.virus_specific == virus_specific)
+        result = result.filter(VOG.virus_specific == virus_specific)
 
     if phages_nonphages:
         for d in set(phages_nonphages):
-            result = result.filter(VOG_table.phages_nonphages.like("%" + d + "%"))
+            result = result.filter(VOG.phages_nonphages.like("%" + d + "%"))
 
     if ancestors:
         for d in set(ancestors):
-            result = result.filter(VOG_table.ancestors.like("%" + d + "%"))
+            result = result.filter(VOG.ancestors.like("%" + d + "%"))
 
     if proteins:
         for d in set(proteins):
-            result = result.filter(VOG_table.proteins.any(Protein_table.id == d))
-
+            result = result.filter(VOG.proteins.any(Protein.id == d))
 
     if species:
-        if union is False:
-            # this is the INTERSECTION SEARCH:
-            vog_ids = db.query().with_entities(Member.vog_id).join(Species_table). \
-                filter(Species_table.species_name.in_(species)).group_by(Member.vog_id). \
-                having(func.count(Species_table.species_name) == len(species)).all()
+        if union:
+            sub = db.query(Member.vog_id).join(Protein).join(Species) \
+                .filter(Species.species_name.in_(species)) \
+                .subquery()
         else:
-            # UNION SEARCH below:
-            vog_ids = db.query().with_entities(Member.vog_id).join(Species_table). \
-                filter(Species_table.species_name.in_(species)).group_by(Member.vog_id).all()
+            sub = db.query(Member.vog_id).join(Protein).join(Species) \
+                .filter(Species.species_name.in_(species)) \
+                .group_by(Member.vog_id).having(func.count(Species.species_name) == len(species)) \
+                .subquery()
+        result = result.filter(VOG.id.in_(sub))
 
-        vog_ids = {id[0] for id in vog_ids}  # convert to set
-        result = result.filter(VOG_table.id.in_(vog_ids))
-
-        if tax_id:
-            ncbi = ncbi_taxa()
-            try:
+    if tax_id:
+        ncbi = ncbi_taxa()
+        try:
+            if union:
+                # UNION SEARCH:
                 id_list = []
-                if union:
-                    # UNION SEARCH:
-                    for id in tax_id:
-                        id_list.extend(
-                            ncbi.get_descendant_taxa(id, collapse_subspecies=False, intermediate_nodes=True))
-                        id_list.append(id)
-                    vog_ids = db.query().with_entities(Member.vog_id).join(Species_table). \
-                        filter(Species_table.taxon_id.in_(id_list)).group_by(Member.vog_id). \
-                        filter(Species_table.taxon_id.in_(id_list)).group_by(Member.vog_id).all()
-                    vog_ids = {id[0] for id in vog_ids}  # convert to set
-                    result = result.filter(VOG_table.id.in_(vog_ids))
-                else:
-                    # INTERSECTION SEARCH:
-                    for id in tax_id:
-                        id_list1 = [id]
-                        id_list1.extend(
-                            ncbi.get_descendant_taxa(id, collapse_subspecies=False, intermediate_nodes=True))
-                        vog_ids = db.query().with_entities(Member.vog_id).join(Species_table). \
-                            filter(Species_table.taxon_id.in_(id_list1)).group_by(Member.vog_id). \
-                            filter(Species_table.taxon_id.in_(id_list1)).group_by(Member.vog_id).all()
-                        vog_ids = {id[0] for id in vog_ids}  # convert to set
-                        result = result.filter(VOG_table.id.in_(vog_ids))
-            except ValueError:
-                raise ValueError("The provided taxonomy ID is invalid: {0}".format(id))
+                for id in tax_id:
+                    id_list.extend(
+                        ncbi.get_descendant_taxa(id, collapse_subspecies=False, intermediate_nodes=True))
+                    id_list.append(id)
 
-    return result.order_by(VOG_table.id).all()
+                sub = db.query(Member.vog_id).join(Protein) \
+                    .filter(Protein.taxon_id.in_(id_list)) \
+                    .subquery()
+                result = result.filter(VOG.id.in_(sub))
+            else:
+                for id in tax_id:
+                    id_list = [id]
+                    id_list.extend(
+                        ncbi.get_descendant_taxa(id, collapse_subspecies=False, intermediate_nodes=True))
+                    sub = db.query(Member.vog_id).join(Protein) \
+                        .filter(Protein.taxon_id.in_(id_list)) \
+                        .subquery()
+                    result = result.filter(VOG.id.in_(sub))
+        except ValueError:
+            raise ValueError("The provided taxonomy ID is invalid: {0}".format(id))
+
+    return result.order_by(VOG.id).all()
 
 
 def find_vogs_by_uid(db: Session, ids: Optional[List[str]]):
@@ -237,7 +230,7 @@ def find_vogs_by_uid(db: Session, ids: Optional[List[str]]):
     if ids:
         log.debug("Searching VOGs by IDs in the database...")
 
-        return db.query(VOG_table).filter(VOG_table.id.in_(ids)).all()
+        return db.query(VOG).filter(VOG.id.in_(ids)).all()
     else:
         log.debug("No IDs were given.")
 
@@ -253,20 +246,20 @@ def get_proteins(db: Session,
     """
     log.debug("Searching Proteins in the database...")
 
-    query = db.query(Protein_table.id)
+    query = db.query(Protein.id)
 
     if taxon_id:
-        query = query.filter(Protein_table.taxon_id.in_(set(taxon_id)))
+        query = query.filter(Protein.taxon_id.in_(set(taxon_id)))
 
     if vog_id:
-        query = query.filter(Protein_table.vog_id.in_(set(vog_id)))
+        query = query.filter(Protein.vog_id.in_(set(vog_id)))
 
     if species:
-        query = query.join(Species_table)
+        query = query.join(Species)
         for s in set(species):
-            query = query.filter(Species_table.species_name.like("%" + s + "%"))
+            query = query.filter(Species.species_name.like("%" + s + "%"))
 
-    return query.order_by(Protein_table.id).all()
+    return query.order_by(Protein.id).all()
 
 
 def find_proteins_by_id(db: Session, pids: List[str]):
@@ -276,7 +269,7 @@ def find_proteins_by_id(db: Session, pids: List[str]):
     if pids:
         log.debug("Searching Proteins by ProteinIDs in the database...")
 
-        return db.query(Protein_table).filter(Protein_table.id.in_(pids)).all()
+        return db.query(Protein).filter(Protein.id.in_(pids)).all()
     else:
         log.debug("No IDs were given.")
 
@@ -332,8 +325,8 @@ def find_protein_faa_by_id(db: Session, id: Optional[List[str]]):
     if id:
         log.info("Searching AA sequence by ProteinIDs in the database...")
 
-        query = db.query(Protein_table.id, Protein_table.aa_seq)
-        return query.filter(Protein_table.id.in_(id)).all()
+        query = db.query(Protein.id, Protein.aa_seq)
+        return query.filter(Protein.id.in_(id)).all()
     else:
         log.error("No IDs were given.")
 
@@ -346,8 +339,8 @@ def find_protein_fna_by_id(db: Session, id: Optional[List[str]]):
     """
     if id:
         log.info("Searching NT sequence by ProteinIDs in the database...")
-        query = db.query(Protein_table.id, Protein_table.nt_seq)
-        return query.filter(Protein_table.id.in_(id)).all()
+        query = db.query(Protein.id, Protein.nt_seq)
+        return query.filter(Protein.id.in_(id)).all()
     else:
         log.error("No IDs were given.")
 
