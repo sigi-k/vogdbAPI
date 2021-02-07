@@ -6,6 +6,7 @@ from fastapi import Depends, FastAPI, Query, Path, HTTPException
 from fastapi.responses import PlainTextResponse
 from .schemas import *
 import logging
+from .models import Species
 
 # configuring logging
 # ToDo: Take out file name to log to console, then have the docker container create a log file
@@ -50,11 +51,12 @@ def get_db():
         db.close()
 
 
-@api.get("/", summary="Welcome!")
-async def root():
-    # Todo: get version from the Species_table
-    version = 202
-    return {"message": f"Welcome to the VOGDB-API. Version = {version}"}
+@api.get("/", summary="Welcome")
+async def root(db: Session = Depends(get_db)):
+    query = db.query(Species.version).first()
+    version = str(query[0])
+    log.debug(f"Fileshare-Version: {version}")
+    return {"message": f"Welcome to the VOGDB-API. Version: {version}"}
 
 
 @api.get("/vsearch/species",
@@ -74,8 +76,7 @@ async def search_species(
 
     with error_handling():
         log.debug("Received a vsearch/species request")
-        # speciess = get_species(db, taxon_id, name, phage, source)
-        # print(speciess)
+
         species_list = [str(i[0]) for i in get_species(db, taxon_id, name, phage, source)]
 
         species = PlainTextResponse('\n'.join(species_list))
