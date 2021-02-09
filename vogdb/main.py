@@ -151,7 +151,7 @@ async def search_vog(
         proteins: Optional[Set[str]] = Query(None),
         species: Optional[Set[str]] = Query(None),
         tax_id: Optional[Set[int]] = Query(None),
-        union: Optional[bool] = None,
+        union: Optional[bool] = Query(None),
         db: Session = Depends(get_db)):
     """
     This functions searches a database and returns a list of vog unique identifiers (UIDs) for records in that database
