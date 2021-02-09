@@ -169,8 +169,7 @@ def get_vogs(db: Session,
         result = result.filter(VOG.virus_specific == virus_specific)
 
     if phages_nonphages:
-        for d in set(phages_nonphages):
-            result = result.filter(VOG.phages_nonphages.like("%" + d + "%"))
+        result = result.filter(VOG.phages_nonphages.like("%" + phages_nonphages + "%"))
 
     if ancestors:
         for d in set(ancestors):
