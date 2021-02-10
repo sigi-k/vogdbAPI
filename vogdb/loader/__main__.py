@@ -16,3 +16,4 @@ if data_dir[:-1] != "/":
 
 vog, species, protein, member = load_frames(data_dir)
 
+save_db_sql(database_url(), vog, species, protein, member)
