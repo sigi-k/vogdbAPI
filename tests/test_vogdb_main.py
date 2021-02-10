@@ -38,6 +38,7 @@ def get_test_client():
     # create the database
     Base.metadata.create_all(bind=engine)
 
+    # here the connection is made
     def override_get_db():
         try:
             db = TestingSessionLocal()
@@ -46,8 +47,18 @@ def get_test_client():
             db.close()
 
     api.dependency_overrides[get_db] = override_get_db
+
+    # env variables
     client = TestClient(api)
     return client
+
+
+# ToDo: testen ob version 202 oder was auch immer zum Testen gewählt wird.
+@pytest.mark.vsummary_vog
+def test_version(get_test_client):
+    client = get_test_client
+    response = client.get(url="/")
+    assert response.json().get("version") == 202, "DB version for testing has to be 202."
 
 
 #------------------------
@@ -58,12 +69,15 @@ def test_vsummaryVog_vogProfiles_ids(get_test_client):
     client = get_test_client
     params = {"id": ["VOG00001", "VOG00002", "VOG00234", "VOG03456"]}
     response = client.get(url="/vsummary/vog/", params=params)
+    exp = set(params["id"])
     expected = ["VOG00001", "VOG00002", "VOG00234", "VOG03456"]
 
+    # response.json() gibt ein dictionary, braucht nicht zu Dataframe machen -> bei DF stimmt auch die Reihenfolge nicht
     data = response.json()
     data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
 
-    assert data["id"].to_list() == expected
+    assert data["id"] == expected
+
 
 @pytest.mark.vsummary_vog
 def test_vsummaryVog_vogProfileFieldNames_ids(get_test_client):

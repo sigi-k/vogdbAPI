@@ -21,6 +21,6 @@ def connect_to_database():
 
     # Create an engine object.
     engine = create_engine(SQLALCHEMY_DATABASE_URL, echo=True)
-    engine.connect()
+    # engine.connect()
     return engine
 
