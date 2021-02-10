@@ -1,6 +1,7 @@
 #!/bin/bash
 
 SOURCE="http://fileshare.csb.univie.ac.at/vog"
+
 TARGET=${1:-data}
 VERSION=${2:-latest}
 

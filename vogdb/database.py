@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 """ This module is used for establishing a connection to the MYSQL database
-Note: you might need to change the MYSQL login credentials 
+Note: you might need to change the MYSQL login credentials if you have setted up your MYSQL database differently
 """
 
 # MySQL database connection
