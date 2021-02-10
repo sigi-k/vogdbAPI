@@ -8,12 +8,6 @@ from .database import Base
 A model is equivalent to a database table e.g. VOG table and it contains all the same attributes
 """
 
-# Member is an m:n association table, we dont want to expose it
-
-#_member = Table('Member', Base.metadata,
-#    Column('VOG_ID', String(30), ForeignKey('VOG.VOG_ID'), primary_key=True),
-#    Column('ProteinID', String(30), ForeignKey('Protein.ProteinID'), primary_key=True)
-#)
 
 class VOG(Base):
     __tablename__ = "VOG"
