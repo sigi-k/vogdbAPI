@@ -38,8 +38,8 @@ Currently two services are defined in `docker-compose.yaml`:
   ```bash
   docker-compose up -d app
   ```
-
-  This container also contains two data loading jobs `load-vog` and `load-taxa`. Because these are not long-running services, they have to be started by
+  Because of the dependency the db service will also be started.
+  The app container also contains two data loading jobs `load-vog` and `load-taxa`. Because these are not long-running services, they have to be started by
   ```bash
   docker-compose run --rm app <job>
   ```
@@ -53,7 +53,7 @@ will leave the database and other data intact, whereas
 ```bash
 docker-compose down -v
 ```
-will remove the volumes and you will have to start from scratch.
+will remove the volumes and you will have to start from scratch, i.e. reload the databases. Note that loading the database will take a few minutes.
 
 You can inspect the logs with
 ```bash
@@ -78,9 +78,17 @@ docker-compose build
 ```
 
 ## Removing images and containers
+```bash
+docker image ls
+```
+will list the built images. When you issue the build command, old images will be inactive, but they will remain stored on the disk.
+You can free disk space with
+```bash
+docker image prune
+```
+which will remove unused images. <br>
 
-You can remove images and containers with the following commands:
-
+You can remove individual images and containers with
 ```bash
 docker image rm [image_id1] [image_id2]
 docker container rm [container_id]
