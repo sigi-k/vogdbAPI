@@ -1,9 +1,7 @@
 # VOGDB-API
 
 ## Introduction
-```bash
-The vDirect is a tool providing various filtering options for the VOGDB-data. 
-```
+
 ## Setting up
 
 ### Starting a MYSQL Server

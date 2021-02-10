@@ -45,6 +45,8 @@ Currently two services are defined in `docker-compose.yaml`:
   ```
   job is either `load-vog` or `load-taxa`.
 
+## Volumes
+
 Data is stored on persistent volumes, therefore
 ```bash
 docker-compose down
@@ -55,6 +57,7 @@ docker-compose down -v
 ```
 will remove the volumes and you will have to start from scratch, i.e. reload the databases. Note that loading the database will take a few minutes.
 
+## Log Inspection
 You can inspect the logs with
 ```bash
 docker-compose logs [service...]
@@ -86,7 +89,7 @@ You can free disk space with
 ```bash
 docker image prune
 ```
-which will remove unused images. <br>
+which will remove unused ("dangling") images. <br>
 
 You can remove individual images and containers with
 ```bash
