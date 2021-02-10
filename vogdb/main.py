@@ -55,12 +55,12 @@ def get_db():
         db.close()
 
 
-@api.get("/", summary="Welcome")
+@api.get("/", summary="Welcome", response_model=WELCOME)
 async def root(db: Session = Depends(get_db)):
     query = db.query(Species.version).first()
-    version = str(query[0])
+    version = query[0]
     log.debug(f"Fileshare-Version: {version}")
-    return {"message": f"Welcome to the VOGDB-API. Version: {version}"}
+    return WELCOME(message="Welcome to the VOGDB-API.", version=version)
 
 
 @api.get("/vsearch/species",

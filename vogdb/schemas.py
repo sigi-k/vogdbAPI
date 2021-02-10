@@ -18,6 +18,13 @@ so the pydantic response model (Protein_profile) needs to have the attribute nam
 if those two criteria are not fulfilled, pydantic will throw an ValidationError
 """
 
+class WELCOME(BaseModel):
+    message: str
+    version: int
+
+    class Config:
+        orm_mode = True
+
 
 class VOG_UID(BaseModel):
     id: str
