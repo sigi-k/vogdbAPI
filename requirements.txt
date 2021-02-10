@@ -1,12 +1,11 @@
 ete3==3.1.2
-lxml
-cryptography
-pandas
-sqlalchemy!==1.3
-sqlalchemy-utils
-pymysql
-biopython
-uvicorn
-hypercorn
-fastapi
+lxml==4.6.2
+cryptography==3.4.4
+pandas==1.2.2
+sqlalchemy==1.4.0b2
+sqlalchemy-utils==0.36.8
+pymysql==1.0.2
+biopython==1.78
+uvicorn==0.13.3
+fastapi==0.63.0
 

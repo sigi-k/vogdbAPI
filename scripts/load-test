@@ -1,0 +1,3 @@
+#!/bin/bash
+
+bash get_data.sh "$VOG_DATA" "vog202" && python -m vogdb.loader "$VOG_DATA"

@@ -33,11 +33,11 @@ class Species_ID(BaseModel):
         orm_mode = True
 
 
-class VOG_protein(BaseModel):
-    id: str
-
-    class Config:
-        orm_mode = True
+# class VOG_protein(BaseModel):
+#     id: str
+#
+#     class Config:
+#         orm_mode = True
 
 
 class ProteinID(BaseModel):
