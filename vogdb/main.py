@@ -180,8 +180,7 @@ async def search_vog(
         return vogs
 
 
-@api.get("/vsummary/vog",
-         response_model=List[VOG_profile], summary="VOG summary")
+@api.get("/vsummary/vog", response_model=List[VOG_profile], summary="VOG summary")
 async def get_summary_vog(id: List[str] = Query(None), db: Session = Depends(get_db)):
     """
     This function returns vog summaries for a list of unique identifiers (UIDs).
@@ -190,6 +189,7 @@ async def get_summary_vog(id: List[str] = Query(None), db: Session = Depends(get
     :param db: database session dependency
     :return: vog summary
     """
+
     with error_handling():
         log.debug("Received a vsummary/vog request")
 
@@ -197,6 +197,7 @@ async def get_summary_vog(id: List[str] = Query(None), db: Session = Depends(get
 
         if not vog_summary:
             log.debug("No matching VOGs found")
+            raise HTTPException(status_code=404, detail="Item not found")
         else:
             log.debug("VOG summaries have been retrieved.")
 
