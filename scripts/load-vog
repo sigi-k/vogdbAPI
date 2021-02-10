@@ -1,3 +1,8 @@
 #!/bin/bash
-
-bash get_data.sh "$VOG_DATA" && python -m vogdb.loader "$VOG_DATA"
+if [ $1 = "test" ]; then
+  # generates test MYSQL database for the testing
+  bash get_data.sh "$VOG_DATA_TEST" "vog202" && python -m vogdb.loader "$VOG_DATA_TEST" "test"
+else
+  # generates latest MYSQL databases
+  bash get_data.sh "$VOG_DATA"  && python -m vogdb.loader "$VOG_DATA"
+fi
