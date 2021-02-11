@@ -53,7 +53,6 @@ def test_vsummaryVog_vogProfiles_ids(get_test_client):
     response = client.get(url="/vsummary/vog/", params=params)
     exp = set(params["id"])
 
-
     data = pd.DataFrame.from_dict(response.json()) # converting to df so its easier to validate
     assert set(data.get("id")) == exp
 #
