@@ -31,8 +31,7 @@ If there is no "test" prefix, pytest will not execute this test function.
 
 @pytest.fixture(scope="session")
 def get_test_client():
-    client = TestClient(api)
-    return client
+    return TestClient(api)
 
 
 # ToDo: testen ob version 202 oder was auch immer zum Testen gewählt wird.
@@ -55,6 +54,14 @@ def test_vsummaryVog_vogProfiles_ids(get_test_client):
 
     data = pd.DataFrame.from_dict(response.json()) # converting to df so its easier to validate
     assert set(data.get("id")) == exp
+
+
+
+# @pytest.mark.vsummary_vog
+# def test_msa(get_test_client):
+#     client = get_test_client
+#     params = {"id": ["VOG00001"]}
+#     response = client.get(url="/vfetch/vog/msa", params=params)
 #
 #
 # @pytest.mark.vsummary_vog
