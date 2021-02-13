@@ -1,4 +1,8 @@
 import contextlib
+
+from slowapi.errors import RateLimitExceeded
+from starlette.requests import Request
+
 from .functionality import *
 from .database import SessionLocal
 from sqlalchemy.orm import Session
@@ -7,6 +11,8 @@ from fastapi.responses import PlainTextResponse
 from .schemas import *
 import logging
 from .models import Species
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
 
 # configuring logging
 # ToDo: Take out file name to log to console, then have the docker container create a log file
@@ -23,6 +29,11 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(mod
 log = logging.getLogger(__name__)
 
 api = FastAPI()
+
+# request limiter
+limiter = Limiter(key_func=get_remote_address)
+api.state.limiter = limiter
+api.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 @contextlib.contextmanager
@@ -95,7 +106,11 @@ async def search_species(
 
 @api.get("/vsummary/species",
          response_model=List[Species_profile], summary="Species summary")
-async def get_summary_species(taxon_id: Optional[List[int]] = Query(None), db: Session = Depends(get_db)):
+@limiter.limit("9/second")
+async def get_summary_species(request: Request,
+                              taxon_id: Optional[List[int]] = Query(..., title="Taxon ID", le = 9999999,
+                                                                  description="Species identity number", example={"2713301"}),
+                              db: Session = Depends(get_db)):
     """
     This function returns Species summaries for a list of taxon ids.
     \f
@@ -180,8 +195,12 @@ async def search_vog(
         return vogs
 
 
+
 @api.get("/vsummary/vog", response_model=List[VOG_profile], summary="VOG summary")
-async def get_summary_vog(id: List[str] = Query(None), db: Session = Depends(get_db)):
+@limiter.limit("9/second")
+async def get_summary_vog(request: Request, id: List[str] = Query(..., max_length=10, regex="^VOG", title="VOG ID",
+                                                                  description="VOG identity number", example={"VOG00004"}),
+                          db: Session = Depends(get_db)):
     """
     This function returns vog summaries for a list of unique identifiers (UIDs).
     \f
@@ -209,10 +228,10 @@ async def get_summary_vog(id: List[str] = Query(None), db: Session = Depends(get
 async def post_summary_species(body: List[VOG_UID], db: Session = Depends(get_db)):
     """
     This function returns Species summaries for a list of taxon ids.
-    \f
+
     :param body: list of VOG uids as returned from search_vog
     :param db: database session dependency
-    :return: VOG summary
+    :return: VOG summary object
     """
     return await get_summary_vog([vog.id for vog in body], db)
 
@@ -341,7 +360,11 @@ async def search_protein(species_name: List[str] = Query(None),
 
 @api.get("/vsummary/protein",
          response_model=List[Protein_profile], summary="Protein summary")
-async def get_summary_protein(id: List[str] = Query(None), db: Session = Depends(get_db)):
+@limiter.limit("9/second")
+async def get_summary_protein(request: Request, id: List[str] = Query(..., max_length=25, regex="^.*(YP|NP).*$", title="Protein ID",
+                                                                  description="Protein taxon identity number",
+                                                                  example={"2301601.YP_009812740.1"}),
+                              db: Session = Depends(get_db)):
     """
     This function returns protein summaries for a list of Protein identifiers (pids)
     \f
