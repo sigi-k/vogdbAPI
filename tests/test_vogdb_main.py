@@ -1,23 +1,8 @@
-import json
-import os
-import string
-import random
-
 import pytest
-import sys
 from fastapi.testclient import TestClient
 import pandas as pd
-from sqlalchemy.orm import sessionmaker
-from os import path
-# sys.path.append('../tests')
-# sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-from tests import generate_test_db
-# sys.path.append('../vogdb')
-# sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-from vogdb.database import Base
-from vogdb.main import api, get_db
-from httpx import AsyncClient
-import time
+from vogdb.main import api
+
 
 """ Tests for vogdb.main.py
 Test naming convention
