@@ -1,3 +1,4 @@
 #!/bin/bash
 
 python -m vogdb.taxa
+#bash get_taxa_data.sh "$NCBI_DATA" && python -m vogdb.taxa
