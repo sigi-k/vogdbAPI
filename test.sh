@@ -7,4 +7,4 @@ export VOG_DATA="data/"
 export NCBI_DATA="$HOME/.etetoolkit/"
 
 # run test script
-pytest tests/test_vogdb_main.py
+pytest -v -m vfetch_hmm tests/test_vogdb_main.py
