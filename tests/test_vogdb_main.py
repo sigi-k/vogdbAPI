@@ -1,8 +1,13 @@
+import os
+import random
+import string
+import time
+
 import pytest
 from fastapi.testclient import TestClient
 import pandas as pd
 from vogdb.main import api
-
+from httpx import AsyncClient
 
 """ Tests for vogdb.main.py
 Test naming convention
@@ -26,400 +31,497 @@ def test_version(get_test_client):
     response = client.get(url="/")
     assert response.json().get("version") == 202, "DB version for testing has to be 202."
 
+@pytest.fixture(scope="session")
+def get_test_asynclient():
+    # # connect to test database
+    # engine = generate_test_db.connect_to_database()
+    # TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    #
+    # # create the database
+    # Base.metadata.create_all(bind=engine)
+    #
+    # def override_get_db():
+    #     try:
+    #         db = TestingSessionLocal()
+    #         yield db
+    #     finally:
+    #         db.close()
+    #
+    #
+    # api.dependency_overrides[get_db] = override_get_db
+    client = AsyncClient(app=api, base_url="http://127.0.0.1:8001")
+    return client
+
+@pytest.fixture(autouse=True)
+def teardown():
+    time.sleep(0.1)
 
 #------------------------
-# vSummary/vog
+# vSummary/vog tests
 #------------------------
-@pytest.mark.vsummary_vog
+@pytest.mark.vsummary_vog1
 def test_vsummaryVog_vogProfiles_ids(get_test_client):
     client = get_test_client
     params = {"id": ["VOG00001", "VOG00002", "VOG00234", "VOG03456"]}
     response = client.get(url="/vsummary/vog/", params=params)
-    exp = set(params["id"])
+    expected = ["VOG00001", "VOG00002", "VOG00234", "VOG03456"]
 
-    data = pd.DataFrame.from_dict(response.json()) # converting to df so its easier to validate
-    assert set(data.get("id")) == exp
+    data = response.json()
+    data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
+
+    assert data["id"].to_list() == expected
+
+@pytest.mark.vsummary_vog
+def test_vsummaryVog_vogProfileFieldNames_ids(get_test_client):
+    client = get_test_client
+    params = {"id": ["VOG00001", "VOG00002", "VOG00234", "VOG03456"]}
+    response = client.get(url="/vsummary/vog/", params=params)
+    expected = ['id', 'protein_count', 'species_count', 'function',
+       'consensus_function', 'genomes_in_group', 'genomes_total_in_LCA',
+       'ancestors', 'h_stringency', 'm_stringency', 'l_stringency',
+       'proteins']
+
+    data = response.json()
+    data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
+    assert list(data.keys()) == expected
+
+@pytest.mark.vsummary_vog
+@pytest.mark.parametrize("key, expected", [("id", str), ('protein_count', int), ('species_count', int), ('function', str),
+                                           ('consensus_function', str), ('genomes_in_group', int),('genomes_total_in_LCA', int),
+                                           ('ancestors', str), ('h_stringency', bool), ('m_stringency', bool),( 'l_stringency', bool),
+                                           ('proteins', list)])
+def test_vsummaryVog_vogProfileFieldTypes_ids(key, expected, get_test_client):
+    client = get_test_client
+    params = {"id": ["VOG00001"]}
+    response = client.get(url="/vsummary/vog/", params=params)
+
+    data = response.json()
+    data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
+    element = data[key].to_list()[0]
+    assert type(element) is expected
+
+@pytest.mark.vsummary_vog
+def test_vsummaryVog_isIdempotent_ids(get_test_client):
+    client = get_test_client
+    params = {"id": ["VOG00001", "VOG00002", "VOG00234", "VOG03456"]}
+
+    response = client.get(url="/vsummary/vog/", params=params)
+    expected_response = client.get(url="/vsummary/vog/", params=params)
+
+    response_data = response.json()
+    expected_data = expected_response.json()
+
+    assert response_data == expected_data
+
+@pytest.mark.vsummary_vog
+def test_vsummaryVog_ResponseUnder500ms_ids(get_test_client):
+    client = get_test_client
+    params = {"id": ["VOG00001", "VOG00002", "VOG00234", "VOG03456"]}
+
+    expected_time = 0.5
+    start = time.time()
+    response = client.get(url="/vsummary/vog/", params=params)
+    end = time.time()
+
+    assert end-start <= expected_time
+
+@pytest.mark.vsummary_vog
+def test_vsummaryVog_ERROR422_integers(get_test_client):
+    client = get_test_client
+    params = {"id": [657567, 123, 124124, 1123]}
+    response = client.get(url="/vsummary/vog/", params=params)
+    expected = 422
+
+    assert response.status_code == expected
+
+@pytest.mark.vsummary_vog
+def test_vsummaryVog_ERROR422_randomString(get_test_client):
+    client = get_test_client
+    params = {"id": ["SOMETHING"]}
+    response = client.get(url="/vsummary/vog/", params=params)
+    expected = 422
+
+    assert response.status_code == expected
+
+@pytest.mark.vsummary_vog
+def test_vsummaryVog_ERROR422_noParameter(get_test_client):
+    client = get_test_client
+    params = {"id": None}
+    response = client.get(url="/vsummary/vog/", params=params)
+    expected = 422
+
+    assert response.status_code == expected
+
+@pytest.mark.vsummary_vog
+def test_vsummaryVog_ERROR422_longParameter(get_test_client):
+    client = get_test_client
+    letters = string.ascii_lowercase
+    long_string = [''.join(random.choice(letters) for i in range(10000))]
+    params = {"id": long_string }
+    response = client.get(url="/vsummary/vog/", params=params)
+    expected = 422
+
+    assert response.status_code == expected
+
+@pytest.mark.vsummary_vog
+@pytest.mark.asyncio
+async def test_vsummaryVog_ERROR429_11requestsPerSecond(get_test_asynclient):
+    client = get_test_asynclient
+    params = {"id": ["VOG00001"]}
+
+    async with client:
+        for _ in range(11):
+            await client.get(url="/vsummary/vog/", params=params)
+        response = await client.get(url="/vsummary/vog/", params=params)
+
+    expected = 429
+    assert response.status_code == expected
 
 
 
-# @pytest.mark.vsummary_vog
-# def test_msa(get_test_client):
-#     client = get_test_client
-#     params = {"id": ["VOG00001"]}
-#     response = client.get(url="/vfetch/vog/msa", params=params)
-#
-#
-# @pytest.mark.vsummary_vog
-# def test_vsummaryVog_vogProfileFieldNames_ids(get_test_client):
-#     client = get_test_client
-#     params = {"id": ["VOG00001", "VOG00002", "VOG00234", "VOG03456"]}
-#     response = client.get(url="/vsummary/vog/", params=params)
-#     expected = ['id', 'protein_count', 'species_count', 'function',
-#        'consensus_function', 'genomes_in_group', 'genomes_total_in_LCA',
-#        'ancestors', 'h_stringency', 'm_stringency', 'l_stringency',
-#        'proteins']
-#
-#     data = response.json()
-#     data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
-#     assert list(data.keys()) == expected
-#
-# # # ToDo test field types
-#
-# @pytest.mark.vsummary_vog
-# def test_vsummaryVog_isIdempotent_ids(get_test_client):
-#     client = get_test_client
-#     params = {"id": ["VOG00001", "VOG00002", "VOG00234", "VOG03456"]}
-#
-#     response = client.get(url="/vsummary/vog/", params=params)
-#     expected_response = client.get(url="/vsummary/vog/", params=params)
-#
-#     response_data = response.json()
-#     expected_data = expected_response.json()
-#
-#     assert response_data == expected_data
-#
-# @pytest.mark.vsummary_vog
-# def test_vsummaryVog_ResponseUnder500ms_ids(get_test_client):
-#     client = get_test_client
-#     params = {"id": ["VOG00001", "VOG00002", "VOG00234", "VOG03456"]}
-#
-#     expected_time = 0.5
-#     start = time.time()
-#     response = client.get(url="/vsummary/vog/", params=params)
-#     end = time.time()
-#
-#     assert end-start <= expected_time
-#
-#
-# #ToDo positiv + optional parameters e.g. sort, limit, skip...
-#
-# @pytest.mark.vsummary_vog
-# def test_vsummaryVog_ERROR404_integers(get_test_client):
-#     client = get_test_client
-#     params = {"id": [657567, 123, 124124, 1123]}
-#     response = client.get(url="/vsummary/vog/", params=params)
-#     expected = 404
-#
-#     assert response.status_code == expected
-#
-# @pytest.mark.vsummary_vog
-# def test_vsummaryVog_ERROR404_randomString(get_test_client):
-#     client = get_test_client
-#     params = {"id": ["SOMETHING"]}
-#     response = client.get(url="/vsummary/vog/", params=params)
-#     expected = 404
-#
-#     assert response.status_code == expected
-#
-# @pytest.mark.vsummary_vog
-# def test_vsummaryVog_ERROR422_noParameter(get_test_client):
-#     client = get_test_client
-#     params = {"id": None}
-#     response = client.get(url="/vsummary/vog/", params=params)
-#     expected = 422
-#
-#     assert response.status_code == expected
-#
-# def test_vsummaryVog_ERROR403_longParameter(get_test_client):
-#     client = get_test_client
-#     letters = string.ascii_lowercase
-#     long_string = [''.join(random.choice(letters) for i in range(10000))]
-#     params = {"id": long_string }
-#     response = client.get(url="/vsummary/vog/", params=params)
-#     expected = 403
-#
-#     assert response.status_code == expected
-#
-# # ToDo load testing
-#
-#
-# #------------------------
-# # vSummary/species
-# #------------------------
-#
-# def test_vsummarySpecies_SpeciesProfiles_ids(get_test_client):
-#     client = get_test_client
-#     params = {"taxon_id": ["2713301", "2713308"]}
-#     response = client.get(url="/vsummary/species/", params=params)
-#     expected = ["2713301", "2713308"]
-#
-#     data = response.json()
-#     data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
-#
-#     assert data["taxon_id"].to_list() == expected
-#
-# def test_vsummarySpecies_speciesProfileFieldNames_ids(get_test_client):
-#     client = get_test_client
-#     params = {"taxon_id": ["2713301", "2713308"]}
-#     response = client.get(url="/vsummary/species/", params=params)
-#     expected = ['species_name', 'taxon_id', 'phage', 'source',
-#        'version']
-#
-#     data = response.json()
-#     data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
-#     assert list(data.keys()) == expected
-#
-# # ToDo test field types
-#
-# def test_vsummarySpecies_isIdempotent_ids(get_test_client):
-#     client = get_test_client
-#     params = {"taxon_id": ["2713301", "2713308"]}
-#
-#     response = client.get(url="/vsummary/species/", params=params)
-#     expected_response = client.get(url="/vsummary/species/", params=params)
-#
-#     response_data = response.json()
-#     expected_data = expected_response.json()
-#
-#     assert response_data == expected_data
-#
-#
-# def test_vsummarySpecies_ResponseUnder500ms_ids(get_test_client):
-#     client = get_test_client
-#     params = {"taxon_id": ["2713301", "2713308"]}
-#
-#     expected_time = 0.5
-#     start = time.time()
-#     response = client.get(url="/vsummary/species/", params=params)
-#     end = time.time()
-#
-#     assert end-start <= expected_time
-#
-#
-# #ToDo positiv + optional parameters e.g. sort, limit, skip...
-#
-# def test_vsummarySpecies_ERROR422_integers(get_test_client):
-#     client = get_test_client
-#     params = {"taxon_id": [657567, 123, 124124, 1123]}
-#     response = client.get(url="/vsummary/species/", params=params)
-#     expected = 422
-#
-#     assert response.status_code == expected
-#
-# def test_vsummarySpecies_ERROR404_randomString(get_test_client):
-#     client = get_test_client
-#     params = {"taxon_id": ["SOMETHING"]}
-#     response = client.get(url="/vsummary/species/", params=params)
-#     expected = 404
-#
-#     assert response.status_code == expected
-#
-#
-# def test_vsummarySpecies_ERROR422_noParameter(get_test_client):
-#     client = get_test_client
-#     params = {"taxon_id": None}
-#     response = client.get(url="/vsummary/species/", params=params)
-#     expected = 422
-#
-#     assert response.status_code == expected
-#
-# def test_vsummarySpecies_ERROR403_longParameter(get_test_client):
-#     client = get_test_client
-#     letters = string.ascii_lowercase
-#     long_string = [''.join(random.choice(letters) for i in range(10000))]
-#     params = {"taxon_id": long_string }
-#     response = client.get(url="/vsummary/species/", params=params)
-#     expected = 403
-#
-#     assert response.status_code == expected
-#
-# # ToDo load testing
-#
-# #------------------------
-# # vSummary/protein
-# #------------------------
-#
-# def test_vsummaryProtein_ProteinProfiles_ids(get_test_client):
-#     client = get_test_client
-#     params = {"id": ["11128.NP_150082.1", "2301601.YP_009812740.1"]}
-#     response = client.get(url="/vsummary/protein/", params=params)
-#     expected = ["11128.NP_150082.1", "2301601.YP_009812740.1"]
-#
-#     data = response.json()
-#     data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
-#
-#     assert data["id"].to_list() == expected
-#
-# def test_vsummaryProtein_proteinProfileFieldNames_ids(get_test_client):
-#     client = get_test_client
-#     params = {"id": ["11128.NP_150082.1", "2301601.YP_009812740.1"]}
-#     response = client.get(url="/vsummary/protein/", params=params)
-#     expected = ['id', 'vog_id', 'taxon_id', 'species_name']
-#
-#     data = response.json()
-#     data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
-#     assert list(data.keys()) == expected
-#
-# # ToDo test field types
-#
-# def test_vsummaryProtein_isIdempotent_ids(get_test_client):
-#     client = get_test_client
-#     params = {"id": ["11128.NP_150082.1", "2301601.YP_009812740.1"]}
-#
-#     response = client.get(url="/vsummary/protein/", params=params)
-#     expected_response = client.get(url="/vsummary/protein/", params=params)
-#
-#     response_data = response.json()
-#     expected_data = expected_response.json()
-#
-#     assert response_data == expected_data
-#
-#
-# def test_vsummaryProtein_ResponseUnder500ms_ids(get_test_client):
-#     client = get_test_client
-#     params = {"id": ["11128.NP_150082.1", "2301601.YP_009812740.1"]}
-#
-#     expected_time = 0.5
-#     start = time.time()
-#     response = client.get(url="/vsummary/protein/", params=params)
-#     end = time.time()
-#
-#     assert end-start <= expected_time
-#
-#
-# #ToDo positiv + optional parameters e.g. sort, limit, skip...
-#
-# def test_vsummaryProtein_ERROR422_integers(get_test_client):
-#     client = get_test_client
-#     params = {"id": [657567, 123, 124124, 1123]}
-#     response = client.get(url="/vsummary/protein/", params=params)
-#     expected = 422
-#
-#     assert response.status_code == expected
-#
-# def test_vsummaryProtein_ERROR404_randomString(get_test_client):
-#     client = get_test_client
-#     params = {"id": ["SOMETHING"]}
-#     response = client.get(url="/vsummary/protein/", params=params)
-#     expected = 404
-#
-#     assert response.status_code == expected
-#
-#
-# def test_vsummaryProtein_ERROR422_noParameter(get_test_client):
-#     client = get_test_client
-#     params = {"id": None}
-#     response = client.get(url="/vsummary/protein/", params=params)
-#     expected = 422
-#
-#     assert response.status_code == expected
-#
-# def test_vsummaryProtein_ERROR403_longParameter(get_test_client):
-#     client = get_test_client
-#     letters = string.ascii_lowercase
-#     long_string = [''.join(random.choice(letters) for i in range(10000))]
-#     params = {"id": long_string }
-#     response = client.get(url="/vsummary/protein/", params=params)
-#     expected = 403
-#
-#     assert response.status_code == expected
-#
-# # ToDo load testing
-#
-#
-#
-# #------------------------
-# # vfetch/vog
-# #------------------------
-#
-# # ToDo need to create extra test folder for hmm, mse stuff...
-# def test_vfetchVogHMM_HMMProfiles_ids(get_test_client):
-#     os.chdir("../") #need to change because of the find_vogs_hmm_by_uid() data folder
-#     client = get_test_client
-#     params = {"id": ["VOG00234", "VOG00003"]}
-#     response = client.get(url="/vfetch/vog/hmm/", params=params)
-#     expected = ["VOG00234", "VOG00003"]
-#
-#     data = response.json()
-#
-#     for i in range(len(expected)):
-#         # searching vogid in first 50 characters
-#         assert any(expected[i] in hmm[0:50] for hmm in data)
-#
-#
-# def test_vfetchVogHMM_HMMFieldTypes_ids(get_test_client):
-#     os.chdir("../") #need to change because of the find_vogs_hmm_by_uid() data folder
-#     client = get_test_client
-#     params = {"id": ["VOG00234", "VOG00003"]}
-#     response = client.get(url="/vfetch/vog/hmm/", params=params)
-#     expected = type(list())
-#
-#     data = response.json()
-#     assert type(data) == expected
-#
-#
-# def test_vfetchVogHMM_isIdempotent_ids(get_test_client):
-#     os.chdir("../") #need to change because of the find_vogs_hmm_by_uid() data folder
-#     client = get_test_client
-#     params = {"id": ["VOG00234", "VOG00003"]}
-#
-#     response = client.get(url="/vfetch/vog/hmm/", params=params)
-#     expected_response = client.get(url="/vfetch/vog/hmm/", params=params)
-#
-#     response_data = response.json()
-#     expected_data = expected_response.json()
-#
-#     assert response_data == expected_data
-#
-#
-# def test_vfetchVogHMM__ResponseUnder500ms_ids(get_test_client):
-#     os.chdir("../") #need to change because of the find_vogs_hmm_by_uid() data folder
-#     client = get_test_client
-#     params = {"id": ["VOG00234", "VOG00003"]}
-#
-#     expected_time = 0.5
-#     start = time.time()
-#     response = client.get(url="/vfetch/vog/hmm/", params=params)
-#     end = time.time()
-#
-#     response_time = end-start
-#     assert response_time <= expected_time
-#
-#
-# #ToDo positiv + optional parameters e.g. sort, limit, skip...
-#
-# def test_vfetchVogHMM_ERROR422_integers(get_test_client):
-#     os.chdir("../") #need to change because of the find_vogs_hmm_by_uid() data folder
-#     client = get_test_client
-#     params = {"id": [123132]}
-#     response = client.get(url="/vfetch/vog/hmm/", params=params)
-#     expected = 422
-#
-#     assert response.status_code == expected
-#
-# def test_vfetchVogHMM_ERROR404_randomString(get_test_client):
-#     os.chdir("../") #need to change because of the find_vogs_hmm_by_uid() data folder
-#     client = get_test_client
-#     params = {"id": ["SOMETHING"]}
-#     response = client.get(url="/vfetch/vog/hmm/", params=params)
-#     expected = 404
-#
-#     assert response.status_code == expected
-#
-#
-# def test_vfetchVogHMM_ERROR422_noParameter(get_test_client):
-#     os.chdir("../") #need to change because of the find_vogs_hmm_by_uid() data folder
-#     client = get_test_client
-#     params = {"id": None}
-#     response = client.get(url="/vfetch/vog/hmm/", params=params)
-#     expected = 422
-#
-#     assert response.status_code == expected
-#
-# def test_vfetchVogHMM_ERROR403_longParameter(get_test_client):
-#     os.chdir("../") #need to change because of the find_vogs_hmm_by_uid() data folder
-#     client = get_test_client
-#     letters = string.ascii_lowercase
-#     long_string = [''.join(random.choice(letters) for i in range(10000))]
-#     params = {"id": long_string }
-#     response = client.get(url="/vfetch/vog/hmm/", params=params)
-#     expected = 403
-#
-#     assert response.status_code == expected
-#
-# # ToDo load testing
-#
-#
+
+#------------------------
+# vSummary/species
+#------------------------
+
+@pytest.mark.vsummary_species
+def test_vsummarySpecies_SpeciesProfilesTaxonIDs_ids(get_test_client):
+    client = get_test_client
+    params = {"taxon_id": ["2713301", "2713308"]}
+    response = client.get(url="/vsummary/species/", params=params)
+    expected = [2713301, 2713308]
+
+    data = response.json()
+    data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
+
+    assert data["taxon_id"].to_list() == expected
+
+@pytest.mark.vsummary_species
+def test_vsummarySpecies_speciesProfileFieldNames_ids(get_test_client):
+    client = get_test_client
+    params = {"taxon_id": ["2713301", "2713308"]}
+    response = client.get(url="/vsummary/species/", params=params)
+    expected = ['taxon_id', 'species_name', 'phage', 'source','version', 'proteins']
+
+    data = response.json()
+    data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
+    assert list(data.keys()) == expected
+
+@pytest.mark.vsummary_species
+@pytest.mark.parametrize("key, expected", [("taxon_id", int), ('species_name', str), ('phage', str), ('source', str), #ToDo phage should be boolean
+                                           ('version', int), ('proteins', list)])
+def test_vsummarySpecies_speciesProfileFieldTypes_ids(key, expected, get_test_client):
+    client = get_test_client
+    params = {"taxon_id": ["2713301"]}
+    response = client.get(url="/vsummary/species/", params=params)
+
+    data = response.json()
+    data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
+    element = data[key].to_list()[0]
+
+    assert type(element) is expected
+
+@pytest.mark.vsummary_species
+def test_vsummarySpecies_isIdempotent_ids(get_test_client):
+    client = get_test_client
+    params = {"taxon_id": ["2713301", "2713308"]}
+
+    response = client.get(url="/vsummary/species/", params=params)
+    expected_response = client.get(url="/vsummary/species/", params=params)
+
+    response_data = response.json()
+    expected_data = expected_response.json()
+
+    assert response_data == expected_data
+
+@pytest.mark.vsummary_species
+def test_vsummarySpecies_ResponseUnder500ms_ids(get_test_client):
+    client = get_test_client
+    params = {"taxon_id": ["2713301", "2713308"]}
+
+    expected_time = 0.5
+    start = time.time()
+    response = client.get(url="/vsummary/species/", params=params)
+    end = time.time()
+
+    assert end-start <= expected_time
+
+@pytest.mark.vsummary_species
+def test_vsummarySpecies_ERROR422_randomString(get_test_client):
+    client = get_test_client
+    params = {"taxon_id": ["SOMETHING"]}
+    response = client.get(url="/vsummary/species/", params=params)
+    expected = 422
+
+    assert response.status_code == expected
+
+@pytest.mark.vsummary_species
+def test_vsummarySpecies_ERROR422_noParameter(get_test_client):
+    client = get_test_client
+    params = {"taxon_id": None}
+    response = client.get(url="/vsummary/species/", params=params)
+    expected = 422
+
+    assert response.status_code == expected
+
+@pytest.mark.vsummary_species
+def test_vsummarySpecies_ERROR422_longParameter(get_test_client):
+    client = get_test_client
+    letters = string.ascii_lowercase
+    long_string = [''.join(random.choice(letters) for i in range(10000))]
+    params = {"taxon_id": long_string }
+    response = client.get(url="/vsummary/species/", params=params)
+    expected = 422
+
+    assert response.status_code == expected
+
+@pytest.mark.vsummary_species
+@pytest.mark.asyncio
+async def test_vsummarySpecie_ERROR429_11requestsPerSecond(get_test_asynclient):
+    client = get_test_asynclient
+    params = {"taxon_id": ["2713301"]}
+
+    async with client:
+        for _ in range(11):
+            await client.get(url="/vsummary/species/", params=params)
+        response = await client.get(url="/vsummary/species/", params=params)
+
+    expected = 429
+    assert response.status_code == expected
+
+
+
+#------------------------
+# vSummary/protein
+#------------------------
+
+@pytest.mark.vsummary_protein
+def test_vsummaryProtein_ProteinProfiles_ids(get_test_client):
+    client = get_test_client
+    params = {"id": ["11128.NP_150082.1", "2301601.YP_009812740.1"]}
+    response = client.get(url="/vsummary/protein/", params=params)
+    expected = ["11128.NP_150082.1", "2301601.YP_009812740.1"]
+
+    data = response.json()
+    data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
+
+    assert data["id"].to_list() == expected
+
+@pytest.mark.vsummary_protein
+def test_vsummaryProtein_proteinProfileFieldNames_ids(get_test_client):
+    client = get_test_client
+    params = {"id": ["11128.NP_150082.1", "2301601.YP_009812740.1"]}
+    response = client.get(url="/vsummary/protein/", params=params)
+    expected = ['id', 'vogs', 'species']
+
+    data = response.json()
+    data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
+    assert list(data.keys()) == expected
+
+@pytest.mark.vsummary_protein
+@pytest.mark.parametrize("key, expected", [("id", str), ('vogs', list), ('species', dict)])
+def test_vsummarySpecies_speciesProfileFieldTypes_ids(key, expected, get_test_client):
+    client = get_test_client
+    params = {"id": ["11128.NP_150082.1"]}
+    response = client.get(url="/vsummary/protein/", params=params)
+
+    data = response.json()
+    data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
+    element = data[key].to_list()[0]
+
+    assert type(element) is expected
+
+@pytest.mark.vsummary_protein
+def test_vsummaryProtein_isIdempotent_ids(get_test_client):
+    client = get_test_client
+    params = {"id": ["11128.NP_150082.1", "2301601.YP_009812740.1"]}
+
+    response = client.get(url="/vsummary/protein/", params=params)
+    expected_response = client.get(url="/vsummary/protein/", params=params)
+
+    response_data = response.json()
+    expected_data = expected_response.json()
+
+    assert response_data == expected_data
+
+@pytest.mark.vsummary_protein
+def test_vsummaryProtein_ResponseUnder500ms_ids(get_test_client):
+    client = get_test_client
+    params = {"id": ["11128.NP_150082.1", "2301601.YP_009812740.1"]}
+
+    expected_time = 0.5
+    start = time.time()
+    response = client.get(url="/vsummary/protein/", params=params)
+    end = time.time()
+
+    assert end-start <= expected_time
+
+@pytest.mark.vsummary_protein
+def test_vsummaryProtein_ERROR422_integers(get_test_client):
+    client = get_test_client
+    params = {"id": [657567, 123, 124124, 1123]}
+    response = client.get(url="/vsummary/protein/", params=params)
+    expected = 422
+
+    assert response.status_code == expected
+
+@pytest.mark.vsummary_protein
+def test_vsummaryProtein_ERROR422_randomString(get_test_client):
+    client = get_test_client
+    params = {"id": ["SOMETHING"]}
+    response = client.get(url="/vsummary/protein/", params=params)
+    expected = 422
+
+    assert response.status_code == expected
+
+@pytest.mark.vsummary_protein
+def test_vsummaryProtein_ERROR422_noParameter(get_test_client):
+    client = get_test_client
+    params = {"id": None}
+    response = client.get(url="/vsummary/protein/", params=params)
+    expected = 422
+
+    assert response.status_code == expected
+
+@pytest.mark.vsummary_protein
+def test_vsummaryProtein_ERROR422_longParameter(get_test_client):
+    client = get_test_client
+    letters = string.ascii_lowercase
+    long_string = [''.join(random.choice(letters) for i in range(10000))]
+    params = {"id": long_string }
+    response = client.get(url="/vsummary/protein/", params=params)
+    expected = 422
+
+    assert response.status_code == expected
+
+@pytest.mark.vsummary_protein
+def test_vsummaryProtein_ERROR422_validAndInvalid(get_test_client):
+    client = get_test_client
+    params = {"id": ["SOMETHING", "11128.NP_150082.1"]}
+    response = client.get(url="/vsummary/protein/", params=params)
+    expected = 422
+
+    assert response.status_code == expected
+
+@pytest.mark.vsummary_species
+@pytest.mark.asyncio
+async def test_vsummaryProtein_ERROR429_11requestsPerSecond(get_test_asynclient):
+    client = get_test_asynclient
+    params = {"id": ["11128.NP_150082.1"]}
+
+    async with client:
+        for _ in range(11):
+            await client.get(url="/vsummary/protein/", params=params)
+        response = await client.get(url="/vsummary/protein/", params=params)
+
+
+    expected = 429
+    assert response.status_code == expected
+
+
+
+
+#------------------------
+# vfetch/vog
+#------------------------
+
+@pytest.mark.vfetch_hmm
+def test_vfetchVogHMM_HMMProfiles_ids(get_test_client):
+    client = get_test_client
+    params = {"id": ["VOG00234", "VOG00003"]}
+    response = client.get(url="/vfetch/vog/hmm/", params=params)
+    expected = ["VOG00234", "VOG00003"]
+
+    response_data = response.json()
+    print(response_data)
+    data = response.json()
+    assert 1 == 0
+
+
+
+def test_vfetchVogHMM_HMMFieldTypes_ids(get_test_client):
+    os.chdir("../") #need to change because of the find_vogs_hmm_by_uid() data folder
+    client = get_test_client
+    params = {"id": ["VOG00234", "VOG00003"]}
+    response = client.get(url="/vfetch/vog/hmm/", params=params)
+    expected = type(list())
+
+    data = response.json()
+    assert type(data) == expected
+
+
+def test_vfetchVogHMM_isIdempotent_ids(get_test_client):
+    os.chdir("../") #need to change because of the find_vogs_hmm_by_uid() data folder
+    client = get_test_client
+    params = {"id": ["VOG00234", "VOG00003"]}
+
+    response = client.get(url="/vfetch/vog/hmm/", params=params)
+    expected_response = client.get(url="/vfetch/vog/hmm/", params=params)
+
+    response_data = response.json()
+    expected_data = expected_response.json()
+
+    assert response_data == expected_data
+
+
+def test_vfetchVogHMM__ResponseUnder500ms_ids(get_test_client):
+    os.chdir("../") #need to change because of the find_vogs_hmm_by_uid() data folder
+    client = get_test_client
+    params = {"id": ["VOG00234", "VOG00003"]}
+
+    expected_time = 0.5
+    start = time.time()
+    response = client.get(url="/vfetch/vog/hmm/", params=params)
+    end = time.time()
+
+    response_time = end-start
+    assert response_time <= expected_time
+
+
+#ToDo positiv + optional parameters e.g. sort, limit, skip...
+
+def test_vfetchVogHMM_ERROR422_integers(get_test_client):
+    os.chdir("../") #need to change because of the find_vogs_hmm_by_uid() data folder
+    client = get_test_client
+    params = {"id": [123132]}
+    response = client.get(url="/vfetch/vog/hmm/", params=params)
+    expected = 422
+
+    assert response.status_code == expected
+
+def test_vfetchVogHMM_ERROR404_randomString(get_test_client):
+    os.chdir("../") #need to change because of the find_vogs_hmm_by_uid() data folder
+    client = get_test_client
+    params = {"id": ["SOMETHING"]}
+    response = client.get(url="/vfetch/vog/hmm/", params=params)
+    expected = 404
+
+    assert response.status_code == expected
+
+
+def test_vfetchVogHMM_ERROR422_noParameter(get_test_client):
+    os.chdir("../") #need to change because of the find_vogs_hmm_by_uid() data folder
+    client = get_test_client
+    params = {"id": None}
+    response = client.get(url="/vfetch/vog/hmm/", params=params)
+    expected = 422
+
+    assert response.status_code == expected
+
+def test_vfetchVogHMM_ERROR403_longParameter(get_test_client):
+    os.chdir("../") #need to change because of the find_vogs_hmm_by_uid() data folder
+    client = get_test_client
+    letters = string.ascii_lowercase
+    long_string = [''.join(random.choice(letters) for i in range(10000))]
+    params = {"id": long_string }
+    response = client.get(url="/vfetch/vog/hmm/", params=params)
+    expected = 403
+
+    assert response.status_code == expected
+
+
+
+
 # #------------------------
 # # vfetch/msa
 # #------------------------
