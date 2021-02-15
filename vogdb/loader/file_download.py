@@ -57,7 +57,6 @@ def download_check():
     md5_fileshare = []
     md5_download = []
     for file, down in zip(fileshare, downloads):
-        #print(file, down)
         (file, _) = urlretrieve(url+file)
         with open(file, "r") as md5_file:
             md5_fileshare.append(md5_file.readline().split()[0])
