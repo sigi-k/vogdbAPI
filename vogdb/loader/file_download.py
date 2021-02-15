@@ -75,9 +75,9 @@ def download_check():
             notify()
             print('A notification was sent to CUBE IssueTracker')
         else:
-            print('Start new download in 10 minutes ...') # this should only be repeated once
+            print('Start new download in 10 minutes ...')
             sleep(600)
-            repeat()
+            repeat() # this should only be repeated once
     else:
         print('Data integrity verified. Download ok. Proceed with creating MySQL database')
         #__main__  # not sure how to call the functions for db creation!
