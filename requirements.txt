@@ -8,5 +8,4 @@ pymysql==1.0.2
 biopython==1.78
 uvicorn==0.13.3
 fastapi==0.63.0
-slowapi
 

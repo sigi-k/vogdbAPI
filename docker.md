@@ -44,7 +44,10 @@ Currently two services are defined in `docker-compose.yaml`:
   docker-compose run --rm app <job>
   ```
   job is either `load-vog` or `load-taxa`.
-
+  `load-vog` takes an optional version parameter, if it is not provided, the latest version is downloaded. A specific version can be loaded with
+  ```bash
+  docker-compose run --rm app load-vog 202
+  ```
 ## Volumes
 
 Data is stored on persistent volumes, therefore
@@ -55,7 +58,8 @@ will leave the database and other data intact, whereas
 ```bash
 docker-compose down -v
 ```
-will remove the volumes and you will have to start from scratch, i.e. reload the databases. Note that loading the database will take a few minutes.
+will remove the volumes and you will have to start from scratch, i.e. reload the databases. Note that loading the database will take a few minutes. <br>
+
 
 ## Log Inspection
 You can inspect the logs with
