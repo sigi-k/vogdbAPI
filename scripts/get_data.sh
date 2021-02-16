@@ -15,7 +15,7 @@ cd ${TARGET}
 
 wget --no-verbose \
      --recursive --no-parent --no-host-directories --no-directories \
-     --timestamping --accept 'vog*' \
+     --timestamping --accept 'vog*' --reject '*md5' \
      ${SOURCE}/${VERSION}/
 
 # unzip FASTA files, but keep the original so that timestamping works
