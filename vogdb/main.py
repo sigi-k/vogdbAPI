@@ -21,10 +21,6 @@ from slowapi.util import get_remote_address
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(module)s- %(funcName)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 
-# loggs into file
-# logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(module)s- %(funcName)s: %(message)s',
-#                     datefmt='%Y-%m-%d %H:%M:%S', filename="../vogdb/vogapi.log", filemode='w')
-
 # get logger:
 log = logging.getLogger(__name__)
 
@@ -45,9 +41,6 @@ def error_handling():
     except (ValueError, KeyError, AttributeError) as e:
         log.exception("Bad request")
         raise HTTPException(400, str(e)) from e
-    # except AttributeError as e:
-    #     log.exception("Unprocessable entity")
-    #     raise HTTPException(422, str(e)) from e
     except Exception as e:
         log.exception("Internal server error")
         raise HTTPException(500, str(e)) from e
@@ -198,7 +191,9 @@ async def search_vog(
                                             description="species name", example={"bovine coronavirus"}),
         tax_id: Optional[Set[int]] = Query(None, title="Taxon ID", le = 9999999,
                                            description="Species identity number", example={"2713301"}),
-        union: Optional[bool] = Query(None, title="union booelan", description=""), #ToDo @SIGI please fill the description
+        union: Optional[bool] = Query(None, title="union boolean", description="When at least two taxonomy IDs or species names are provided,"
+                                                                               " the VOGs containing either are returned, when the union parameter is set to True. Otherwise the result is"
+                                                                               " the intersection of the VOGs contained in either group."),
         db: Session = Depends(get_db)):
     """
     This functions searches a database and returns a list of vog unique identifiers (UIDs) for records in that database
@@ -265,7 +260,7 @@ async def get_summary_vog(request: Request, id: List[str] = Query(..., max_lengt
 async def post_summary_species(body: List[VOG_UID], db: Session = Depends(get_db)):
     """
     This function returns Species summaries for a list of taxon ids.
-
+    \f
     :param body: list of VOG uids as returned from search_vog
     :param db: database session dependency
     :return: VOG summary object
