@@ -283,15 +283,19 @@ def find_vogs_hmm_by_uid(uid: List[str]) -> Dict[str, str]:
         log.debug("No IDs were given.")
         return {}
 
-    return {id: hmm_content(id) for id in set(uid)}
+    query_result = {}
+    for id in set(uid):
+        try:
+            hmm = hmm_content(id)
+            query_result[id] = hmm
+        except FileNotFoundError:
+            log.exception(f"No HMM for {id}")
+    return query_result
 
 
 def hmm_content(uid: str) -> str:
-    try:
-        return _load_gzipped_file_content(uid.upper(), "hmm", ".hmm.gz")
-    except FileNotFoundError:
-        log.exception(f"No HMM for {uid}")
-        raise KeyError(f"Invalid Id {uid}")
+    return _load_gzipped_file_content(uid.upper(), "hmm", ".hmm.gz")
+
 
 
 def find_vogs_msa_by_uid(uid: List[str]) -> Dict[str, str]:
@@ -301,15 +305,21 @@ def find_vogs_msa_by_uid(uid: List[str]) -> Dict[str, str]:
         log.debug("No IDs were given.")
         return {}
 
-    return {id: msa_content(id) for id in set(uid)}
+    query_result = {}
+    for id in set(uid):
+        try:
+            msa = msa_content(id)
+            query_result[id] = msa
+        except FileNotFoundError:
+            log.exception(f"No MSA for {id}")
+    return query_result
 
 
 def msa_content(uid: str) -> str:
-    try:
-        return _load_gzipped_file_content(uid.upper(), "raw_algs", ".msa.gz")
-    except FileNotFoundError:
-        log.exception(f"No MSA for {uid}")
-        raise KeyError(f"Invalid Id {uid}")
+    return _load_gzipped_file_content(uid.upper(), "raw_algs", ".msa.gz")
+
+
+
 
 
 def _load_gzipped_file_content(id: str, prefix: str, suffix: str) -> str:
@@ -324,7 +334,6 @@ def find_protein_faa_by_id(db: Session, id: Optional[List[str]]):
     """
     if id:
         log.info("Searching AA sequence by ProteinIDs in the database...")
-
         query = db.query(Protein.id, Protein.aa_seq)
         return query.filter(Protein.id.in_(id)).all()
     else:
