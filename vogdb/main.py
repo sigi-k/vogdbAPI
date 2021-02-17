@@ -76,19 +76,24 @@ async def root(db: Session = Depends(get_db)):
 
 @api.get("/vsearch/species",
          response_class=PlainTextResponse, summary="Species search")
+@limiter.limit("9/second")
 async def search_species(
+        request: Request,
         db: Session = Depends(get_db),
-        taxon_id: List[int] = Query(None),
-        name: List[str] = Query(None),
-        phage: Optional[bool] = Query(None),
-        source: Optional[str] = Query(None)):
+        taxon_id: List[int] =  Query(None, title="Taxon ID", le = 9999999, description="Species identity number",
+                                     example={"2713301"}),
+        name: List[str] = Query(None, max_length=20, regex="^[a-zA-Z\s]*$", title="species name",
+                                                                   description="species name", example={"corona"}),
+        phage: Optional[bool] = Query(None, example = {"True"}),
+        source: Optional[str] = Query(None, max_length= 20, regex="^[a-zA-Z\s]*$", example = {"NCBI"})):
     """
     This functions searches a database and returns a list of species IDs for records in that database
     which meet the search criteria.
     \f
     :return: A List of Species IDs
     """
-
+    if all(param is None for param in [name, taxon_id, phage, source]):
+        raise HTTPException(status_code=400, detail="No parameters given.")
     with error_handling():
         log.debug("Received a vsearch/species request")
 
@@ -96,8 +101,10 @@ async def search_species(
 
         species = PlainTextResponse('\n'.join(species_list))
 
-        if not species:
+        if not species.body.decode("utf-8"):
             log.info("No Species match the search criteria.")
+            raise HTTPException(status_code=404, detail="Item not found")
+
         else:
             log.info("Species have been retrieved.")
 
@@ -149,28 +156,49 @@ async def post_summary_species(body: List[Species_ID], db: Session = Depends(get
 
 @api.get("/vsearch/vog",
          response_class=PlainTextResponse, summary="VOG search")
+@limiter.limit("9/second")
 async def search_vog(
-        id: Optional[Set[str]] = Query(None),
-        pmin: Optional[int] = Query(None),
-        pmax: Optional[int] = Query(None),
-        smax: Optional[int] = Query(None),
-        smin: Optional[int] = Query(None),
-        functional_category: Optional[Set[str]] = Query(None),
-        consensus_function: Optional[Set[str]] = Query(None),
-        mingLCA: Optional[int] = Query(None),
-        maxgLCA: Optional[int] = Query(None),
-        mingGLCA: Optional[int] = Query(None),
-        maxgGLCA: Optional[int] = Query(None),
-        ancestors: Optional[Set[str]] = Query(None),
-        h_stringency: Optional[bool] = Query(None),
-        m_stringency: Optional[bool] = Query(None),
-        l_stringency: Optional[bool] = Query(None),
+        request: Request,
+        id: Optional[Set[str]] = Query(None, max_length=10, regex="^VOG", title="VOG ID",
+                                       description="VOG identity number", example={"VOG00004"}),
+        pmin: Optional[int] = Query(None, ge=0, le= 999999, title = "protein max limit",
+                                    description="maximum number of proteins for a VOG", example={66}),
+        pmax: Optional[int] = Query(None, ge=0, le= 999999, title = "protein min limit",
+                                    description="minimum number of proteins for a VOG", example={5}),
+        smax: Optional[int] = Query(None,ge=0, le= 999999, title = "species max limit",
+                                    description="maximum number of species for a VOG", example={66}),
+        smin: Optional[int] = Query(None, ge=0,le= 999999, title = "species max limit",
+                                    description="maximum number of species for a VOG", example={5}),
+        functional_category: Optional[Set[str]] = Query(None, max_length=5, title = "functional categories",
+                                                    description= "[Xr] Virus replication, [Xs] Virus structure; " +
+                                                    "[Xh] [Xp] protein function beneficial for the host, virus, respectively; " +
+                                                    "[Xu] unknown function", example={"XrXs"}),
+        consensus_function: Optional[Set[str]] = Query(None, max_length=100, title = "consensus function",
+                                                       description="consensus function of the protein",
+                                                       example={"Transcriptional activator"}),
+        mingLCA: Optional[int] = Query(None,ge=0, le=999999,  title="gLCA min limit",
+                                       description="minimal number of genomes in LCA", example={2000}),
+        maxgLCA: Optional[int] = Query(None,ge=0, le=999999,  title="gLCA max limit",
+                                       description="maximal number of genomes in group and LCA", example={10000}),
+        mingGLCA: Optional[int] = Query(None, ge=0, le=999999,  title="gGLCA min limit",
+                                       description="minimal number of genomes in group and LCA", example={2000}),
+        maxgGLCA: Optional[int] = Query(None, ge=0, le=999999,  title="gGLCA min limit",
+                                       description="minimal number of genomes in LCA", example={2000}),
+        ancestors: Optional[Set[str]] = Query(None, max_length= 200, title= "last common ancestors",
+                                              example={"Viruses;Varidnaviria"}),
+        h_stringency: Optional[bool] = Query(None, title="high virus stringency"),
+        m_stringency: Optional[bool] = Query(None, title="medium virus stringency"),
+        l_stringency: Optional[bool] = Query(None, title="low virus stringency"),
         virus_specific: Optional[bool] = Query(None),
-        phages_nonphages: Optional[str] = Query(None),
-        proteins: Optional[Set[str]] = Query(None),
-        species: Optional[Set[str]] = Query(None),
-        tax_id: Optional[Set[int]] = Query(None),
-        union: Optional[bool] = Query(None),
+        phages_nonphages: Optional[str] = Query(None, max_length=20, title="select only phage/nonphage VOGs", example={"phages"}),
+        proteins: Optional[Set[str]] = Query(None, regex="^.*(YP|NP).*$", title="Protein ID",
+                                             description="Protein taxon identity number",
+                                             example={"2301601.YP_009812740.1"}),
+        species: Optional[Set[str]] = Query(None, max_length=20, regex="^[a-zA-Z\s]*$", title="species name",
+                                            description="species name", example={"bovine coronavirus"}),
+        tax_id: Optional[Set[int]] = Query(None, title="Taxon ID", le = 9999999,
+                                           description="Species identity number", example={"2713301"}),
+        union: Optional[bool] = Query(None, title="union booelan", description=""), #ToDo @SIGI please fill the description
         db: Session = Depends(get_db)):
     """
     This functions searches a database and returns a list of vog unique identifiers (UIDs) for records in that database
@@ -178,6 +206,12 @@ async def search_vog(
     \f
     :return: A List of VOG IDs
     """
+
+    if all(param is None for param in [id, pmin, pmax, smin, smax, union, tax_id, species, proteins, phages_nonphages,
+                                       virus_specific, l_stringency, m_stringency, h_stringency, ancestors, maxgLCA,
+                                       maxgGLCA, mingGLCA, mingLCA, consensus_function, functional_category]):
+        raise HTTPException(status_code=400, detail="No parameters given.")
+
     with error_handling():
         log.debug("Received a vsearch/vog request")
 
@@ -187,8 +221,11 @@ async def search_vog(
 
         vogs = PlainTextResponse('\n'.join(vog_list))
 
-        if not vogs:
+
+        if not vogs.body.decode("utf-8"):
             log.info("No VOGs match the search criteria.")
+            raise HTTPException(status_code=404, detail="Item not found")
+
         else:
             log.info("VOGs have been retrieved.")
 
@@ -237,7 +274,9 @@ async def post_summary_species(body: List[VOG_UID], db: Session = Depends(get_db
 
 
 @api.get("/vfetch/vog/hmm", response_model=Dict[str, str], summary="VOG HMM fetch")
-async def get_fetch_vog_hmm(id: List[str] = Query(None)):
+@limiter.limit("9/second")
+async def get_fetch_vog_hmm(request: Request,  id: List[str] = Query(..., max_length=10, regex="^VOG", title="VOG ID",
+                                                                  description="VOG identity number", example={"VOG00004"})):
     """
     This function returns the Hidden Markov Matrix (HMM) for a list of unique identifiers (UIDs)
     \f
@@ -249,12 +288,12 @@ async def get_fetch_vog_hmm(id: List[str] = Query(None)):
 
         vog_hmm = find_vogs_hmm_by_uid(id)
 
-        if not vog_hmm:
+        if len(vog_hmm) == 0:
             log.debug("No HMM found.")
-        else:
-            log.debug("HMM search successful.")
-        return vog_hmm
+            raise HTTPException(status_code=404, detail="Item not found")
 
+        log.debug("HMM search successful.")
+        return vog_hmm
 
 @api.post("/vfetch/vog/hmm", response_model=Dict[str, str], summary="VOG HMM fetch")
 async def post_fetch_vog_hmm(body: List[VOG_UID]):
@@ -268,7 +307,9 @@ async def post_fetch_vog_hmm(body: List[VOG_UID]):
 
 
 @api.get("/vfetch/vog/msa", response_model=Dict[str, str], summary="VOG MSA fetch")
-async def get_fetch_vog_msa(id: List[str] = Query(None)):
+@limiter.limit("9/second")
+async def get_fetch_vog_msa(request: Request,  id: List[str] = Query(..., max_length=10, regex="^VOG", title="VOG ID",
+                                                                  description="VOG identity number", example={"VOG00004"})):
     """
     This function returns the Multiple Sequence Alignment (MSA) for a list of unique identifiers (UIDs)
     \f
@@ -277,13 +318,14 @@ async def get_fetch_vog_msa(id: List[str] = Query(None)):
     """
     with error_handling():
         log.debug("Received a vfetch/vog/msa request")
-
         vog_msa = find_vogs_msa_by_uid(id)
 
-        if not vog_msa:
-            log.debug("No HMM found.")
-        else:
-            log.debug("MSA search successful.")
+        if len(vog_msa) == 0:
+            log.debug("No MSA found.")
+            raise HTTPException(status_code=404, detail="Item not found")
+
+        log.debug("MSA search successful.")
+
         return vog_msa
 
 
@@ -330,9 +372,14 @@ async def plain_vog_msa(id: str = Path(..., title="VOG id", min_length=8, regex=
 
 @api.get("/vsearch/protein",
          response_class=PlainTextResponse, summary="Protein search")
-async def search_protein(species_name: List[str] = Query(None),
-                         taxon_id: List[int] = Query(None),
-                         VOG_id: List[str] = Query(None),
+@limiter.limit("9/second")
+async def search_protein(request: Request,
+                         species_name: List[str] = Query(None, max_length=20, regex="^[a-zA-Z\s]*$", title="species name",
+                                                                  description="species name", example={"corona"}),
+                         taxon_id: List[int] =  Query(None, title="Taxon ID", le = 9999999,
+                                                                  description="Species identity number", example={"2713301"}),
+                         VOG_id: List[str] = Query(None, max_length=10, regex="^VOG", title="VOG ID",
+                                                                  description="VOG identity number", example={"VOG00004"}),
                          db: Session = Depends(get_db)):
     """
     This functions searches a database and returns a list of Protein IDs for records in the database
@@ -343,6 +390,10 @@ async def search_protein(species_name: List[str] = Query(None),
     :param: VOG_id: ID of the VOG(s)
     :return: A List of Protein IDs
     """
+    if all(param is None for param in [species_name, taxon_id, VOG_id]):
+        raise HTTPException(status_code=400, detail="No parameters given.")
+
+
     with error_handling():
         log.debug("Received a vsearch/protein request")
 
@@ -350,8 +401,9 @@ async def search_protein(species_name: List[str] = Query(None),
 
         proteins = PlainTextResponse('\n'.join(protein_list))
 
-        if not proteins:
+        if not proteins.body.decode("utf-8"):
             log.debug("No Proteins match the search criteria.")
+            raise HTTPException(status_code=404, detail="Item not found")
         else:
             log.debug("Proteins have been retrieved.")
 
@@ -383,6 +435,7 @@ async def get_summary_protein(request: Request, id: List[str] = Query(..., max_l
 
         if not protein_summary:
             log.debug("No matching Proteins found")
+            raise HTTPException(status_code=404, detail="Item not found")
         else:
             log.debug("Protein summaries have been retrieved.")
 
@@ -403,7 +456,11 @@ async def post_summary_protein(body: List[ProteinID], db: Session = Depends(get_
 
 @api.get("/vfetch/protein/faa",
          response_model=List[AA_seq], summary="Protein AA fetch")
-async def get_fetch_protein_faa(id: List[str] = Query(None), db: Session = Depends(get_db)):
+@limiter.limit("9/second")
+async def get_fetch_protein_faa(request: Request, id: List[str] = Query(..., max_length=25, regex="^.*(YP|NP).*$", title="Protein ID",
+                                                                  description="Protein taxon identity number",
+                                                                  example={"2301601.YP_009812740.1"}),
+                                db: Session = Depends(get_db)):
     """
     This function returns Amino acid sequences for the proteins specified by the protein IDs
     \f
@@ -413,15 +470,14 @@ async def get_fetch_protein_faa(id: List[str] = Query(None), db: Session = Depen
     """
     with error_handling():
         log.debug("Received a vfetch/protein/faa request")
-
         protein_faa = find_protein_faa_by_id(db, id)
-
         if not len(protein_faa) == len(id):
             log.warning("At least one of the proteins was not found, or there were duplicates.\n"
                         "IDs given: {0}".format(id))
 
         if not protein_faa:
             log.debug("No Proteins found with the given IDs")
+            raise HTTPException(status_code=404, detail="Item not found")
         else:
             log.debug("Aminoacid sequences have been retrieved.")
 
@@ -442,7 +498,11 @@ async def post_fetch_protein_faa(body: List[ProteinID], db: Session = Depends(ge
 
 @api.get("/vfetch/protein/fna",
          response_model=List[NT_seq], summary="Protein NT fetch")
-async def get_fetch_protein_fna(id: List[str] = Query(None), db: Session = Depends(get_db)):
+@limiter.limit("9/second")
+async def get_fetch_protein_fna(request: Request, id: List[str] = Query(..., max_length=25, regex="^.*(YP|NP).*$", title="Protein ID",
+                                                                  description="Protein taxon identity number",
+                                                                  example={"2301601.YP_009812740.1"}),
+                                db: Session = Depends(get_db)):
     """
     This function returns Nucleotide sequences for the genes specified by the protein IDs
     \f
@@ -461,6 +521,7 @@ async def get_fetch_protein_fna(id: List[str] = Query(None), db: Session = Depen
 
         if not protein_fna:
             log.debug("No Proteins found with the given IDs")
+            raise HTTPException(status_code=404, detail="Item not found")
         else:
             log.debug("Nucleotide sequences have been retrieved.")
 
