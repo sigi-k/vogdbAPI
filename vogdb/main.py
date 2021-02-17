@@ -15,9 +15,6 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 
 # configuring logging
-# ToDo: Take out file name to log to console, then have the docker container create a log file
-
-# logs into stdout
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(module)s- %(funcName)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 
