@@ -1,89 +1,118 @@
 # VOGDB-API
 
 ## Introduction
+The Virus Orthologous Groups Database Application Programming Interface (VOGDB-API) provides access to the stored data in a more elaborate way. Orthologous groups can be filtered based on numerous criteria, enabling the user to make more specific searches. Additionally, the Hidden Markov Matrices (HMMs) and Multiple Sequence Alignments (MSAs) for VOGs, as well as Aminoacid and Nucleotide sequences for proteins can be retrieved.
 
-## Setting up
+## Running in Docker
 
-### Starting a MYSQL Server
-Write in terminal
-```bash
-sudo apt-get update
-sudo apt-get install mysql-server
-```
-
-set root privileges for the mysql server
-```bash
-sudo mysql
-mysql> ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'password';
-mysql> FLUSH PRIVILEGES;
-mysql> exit;
-```
-
-If it worked you should be able to access mysql server as root:
-```bash
-sudo mysql -u root -p
-# enter password
-```
-
-### Setting up Python environment
-
-python version: 3.8.5
+### Installing Docker
 
 ```bash
-pip install sqlalchemy
-pip install sqlalchemy-utils
-pip install pymysql
-pip install biopython
-pip install hypercorn
-pip install fastapi
+sudo apt-get install docker.io docker-compose
+sudo addgroup <username> docker
 ```
-___________________________________________________________________________________________
-
-## Creating the database
-* make sure you downloaded the VOGDB data: ftp://ftp.ncbi.nih.gov/pub/COG/COG2020/data
-* put the data folder in the same projects folder
-
-1. Create the MYSQL database by running generate_db.py script
-> Note: you may need to change the data path or the MYSQL login credentials
-
-Now you should see the newly created tables in the new MYSQL VOG database:
+Maybe for preparation you have to do:
 ```bash
-sudo mysql -u root -p
-
-mysql> show databases;
-mysql> use VOGDB;
-mysql> show tables;
-mysql> describe Protein_profile;
-
+sudo systemctl disable --now mysql.service
 ```
+to free the port for the docker container.
 
-## Starting the VOG-API
+### Services
 
+Currently two services are defined in `docker-compose.yaml`:
+
+* db
+
+  This is the Mysql database server.
+
+  You start the db service with
+  ```bash
+  docker-compose up -d db
+  ```
+  Because `app` has a dependency on `db`
+  it will also be started when you start the `app` container.
+
+  Currently port 3306 is exposed from the db service to facilitate local development. This is **not** required/recommended in production.
+
+* app
+
+  This is the application (i.e. the FastAPI server). By default, it is hosted in `uvicorn`, but
+  this can be changed in `docker-compose.yaml` to `hypercorn`.
+
+  You start the app service with
+  ```bash
+  docker-compose up -d app
+  ```
+  Because of the dependency the db service will also be started.
+  The app container also contains two data loading jobs `load-vog` and `load-taxa`. Because these are not long-running services, they have to be started by
+  ```bash
+  docker-compose run --rm app <job>
+  ```
+  job is either `load-vog` or `load-taxa`.
+  `load-vog` takes an optional version parameter, if it is not provided, the latest version is downloaded. A specific version can be loaded with
+  ```bash
+  docker-compose run --rm app load-vog 202
+  ```
+### Volumes
+
+Data is stored on persistent volumes, therefore
 ```bash
-cd vogfastAPI
-hypercorn vogdb:api --reload
+docker-compose down
 ```
+will leave the database and other data intact, whereas 
+```bash
+docker-compose down -v
+```
+will remove the volumes and you will have to start from scratch, i.e. reload the databases. Note that loading the database will take a few minutes. <br>
+
+
+### Log Inspection
+You can inspect the logs with
+```bash
+docker-compose logs [service...]
+```
+A running log is obtained by
+```bash
+docker-compose logs -f
+```
+
+All the commands above assume that you are running docker-compose from the directory where the docker-compose.yaml is stored. Otherwise (e.g. in crontab) you will have to specify the full path 
+when you invoke docker-compose.
+```bash
+docker-compose -f /path/to/docker-compose.yaml run --rm app load-vog
+```
+
+### Building the images
+
+If you change the definition of the app image (i.e. in the `Dockerfile`) or you want to include new/changed sources in the container, you will have to rebuild them by issueing
+```bash
+docker-compose build
+```
+
+### Removing images and containers
+```bash
+docker image ls
+```
+will list the built images. When you issue the build command, old images will be inactive, but they will remain stored on the disk.
+You can free disk space with
+```bash
+docker image prune
+```
+which will remove unused ("dangling") images. <br>
+
+You can remove individual images and containers with
+```bash
+docker image rm [image_id1] [image_id2]
+docker container rm [container_id]
+```
+
 
 ## Using the VOGDB-API with vDirect
+VDirect is a user-friendly command line tool that creates URLs to make API requests for information retrieval via the VOGDB-API.
+It can be found on PyPI and installed with:
 ```bash
-Below is the search hierarchy: first specify vsearch, vsummary or vfetch, then the subsequent parameters.
-'-h' provides a list of the parameters that can be used for filtering.
-
-python vdirect.py vsearch     species   species_search_parameters
-                              protein   protein_search_parameters
-                              vog       vog_search_parameters
-                  vsummary    species   species_ids
-                              protein   protein_ids
-                              vog       vog_ids
-                  vfetch      protein   faa   protein_ids
-                                        fna   protein_ids
-                              vog       hmm   vog_ids
-                                        msa   vog_ids
+pip install vDirect
 ```
-
-## Docker
-
-## Dependencies
 
 ## Authors
 ```bash
