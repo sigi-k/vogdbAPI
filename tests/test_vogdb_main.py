@@ -1288,6 +1288,7 @@ def test_vsearchSpecies_ERROR422_IdsLongParameter(get_test_client):
 
 
 @pytest.mark.vsearch_species
+@pytest.mark.skip
 def test_vsearchSpecies_ERROR422_nameIntegers(get_test_client):
     client = get_test_client
     params = {"name": [657567, 123, 124124, 1123]}
