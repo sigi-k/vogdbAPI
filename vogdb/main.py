@@ -93,7 +93,6 @@ async def search_species(
 
         if not species.body.decode("utf-8"):
             log.info("No Species match the search criteria.")
-            # raise HTTPException(status_code=404, detail="Item not found")
 
         else:
             log.info("Species have been retrieved.")
@@ -216,7 +215,6 @@ async def search_vog(
 
         if not vogs.body.decode("utf-8"):
             log.info("No VOGs match the search criteria.")
-            # raise HTTPException(status_code=404, detail="Item not found")
 
         else:
             log.info("VOGs have been retrieved.")
@@ -395,7 +393,6 @@ async def search_protein(request: Request,
 
         if not proteins.body.decode("utf-8"):
             log.debug("No Proteins match the search criteria.")
-            # raise HTTPException(status_code=404, detail="Item not found")
         else:
             log.debug("Proteins have been retrieved.")
 

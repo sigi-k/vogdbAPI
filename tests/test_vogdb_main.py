@@ -1037,11 +1037,11 @@ async def test_vsearchProtein_ERROR429_11requestsPerSecond(get_test_asynclient):
     assert response.status_code == expected
 
 @pytest.mark.vsearch_protein
-def test_vsearchProtein_ERROR422_MadeUpTaxonID(get_test_client):
+def test_vsearchProtein_MadeUpTaxonID(get_test_client):
     client = get_test_client
     params = {"taxon_id": ["1231", "123", "124124", "1123"]}
     response = client.get(url="/vsearch/protein/", params=params)
-    expected = 404
+    expected = 200
 
     assert response.status_code == expected
 
@@ -1084,11 +1084,15 @@ def test_vsearchProtein_ERROR422_speciesNameIntegers(get_test_client):
     assert response.status_code == expected
 
 @pytest.mark.vsearch_protein
-def test_vsearchProtein_ERROR404_speciesNamerandomString(get_test_client):
+def test_vsearchProtein_speciesNamerandomString(get_test_client):
     client = get_test_client
     params = {"species_name": ["SOMETHING"]}
     response = client.get(url="/vsearch/protein/", params=params)
-    expected = 404
+    expected = 200
+    # expected = []
+    # data = response.json()
+    # data = pd.DataFrame.from_dict(data) # converting to df so its easier to validate
+    # assert data["id"].to_list() == expected
 
     assert response.status_code == expected
 
@@ -1243,11 +1247,11 @@ def test_vsearchSpecies_ResponseUnder500ms_ids(get_test_client):
 
 
 @pytest.mark.vsearch_species
-def test_vsearchSpecies_ERROR404_MadeUpTaxonIDs(get_test_client):
+def test_vsearchSpecies_MadeUpTaxonIDs(get_test_client):
     client = get_test_client
     params = {"taxon_id": [657567, 123, 124124, 1123]}
     response = client.get(url="/vsearch/species/", params=params)
-    expected = 404
+    expected = 200
 
     assert response.status_code == expected
 
@@ -1294,11 +1298,11 @@ def test_vsearchSpecies_ERROR422_nameIntegers(get_test_client):
 
 
 @pytest.mark.vsearch_species
-def test_vsearchSpecies_ERROR404_nameRandomString(get_test_client):
+def test_vsearchSpecies_nameRandomString(get_test_client):
     client = get_test_client
     params = {"name": ["SOMETHING"]}
     response = client.get(url="/vsearch/species/", params=params)
-    expected = 404
+    expected = 200
 
     assert response.status_code == expected
 
@@ -1374,11 +1378,11 @@ def test_vsearchSpecies_ERROR422_sourceIntegers(get_test_client):
     assert response.status_code == expected
 
 @pytest.mark.vsearch_species
-def test_vsearchSpecies_ERROR404_sourceRandomString(get_test_client):
+def test_vsearchSpecies_sourceRandomString(get_test_client):
     client = get_test_client
     params = {"source": ["SOMETHING"]}
     response = client.get(url="/vsearch/species/", params=params)
-    expected = 404
+    expected = 200
 
     assert response.status_code == expected
 
@@ -1543,12 +1547,12 @@ def test_vsearchVOG_CorrectVOGs_functional_category(get_test_client):
     assert set(expected) <= set(data)
 
 @pytest.mark.vsearch_vog
-def test_vsearchVOG_ERROR422_functional_categoryRandomString(get_test_client):
+def test_vsearchVOG_unctional_categoryRandomString(get_test_client):
     client = get_test_client
     params = {"functional_category": ["AA"]}
     response = client.get(url="/vsearch/vog/", params=params)
 
-    expected = 404
+    expected = 200
 
     assert response.status_code == expected
 
@@ -1575,18 +1579,18 @@ def test_vsearchVOG_CorrectVOGs_consensus_function(get_test_client):
     assert set(expected) <= set(data)
 
 @pytest.mark.vsearch_vog
-def test_vsearchVOG_ERROR422_consensus_functionRandomString(get_test_client):
+def test_vsearchVOG_consensus_functionRandomString(get_test_client):
     client = get_test_client
     params = {"consensus_function": ["123BAZ"]}
     response = client.get(url="/vsearch/vog/", params=params)
 
-    expected = 404
+    expected = 200
 
     assert response.status_code == expected
 
 
 @pytest.mark.vsearch_vog
-def test_vsearchVOG_ERROR422_consensus_functionLongParameter(get_test_client):
+def test_vsearchVOG_consensus_functionLongParameter(get_test_client):
     client = get_test_client
     letters = string.ascii_lowercase
     long_string = [''.join(random.choice(letters) for i in range(10000))]
@@ -1611,12 +1615,12 @@ def test_vsearchVOG_CorrectVOGs_ancestors(get_test_client):
     assert set(expected) <= set(data)
 
 @pytest.mark.vsearch_vog
-def test_vsearchVOG_ERROR422_ancestorsRandomString(get_test_client):
+def test_vsearchVOG_ancestorsRandomString(get_test_client):
     client = get_test_client
     params = {"ancestors": ["123BAZ"]}
     response = client.get(url="/vsearch/vog/", params=params)
 
-    expected = 404
+    expected = 200
 
     assert response.status_code == expected
 
@@ -1643,12 +1647,12 @@ def test_vsearchVOG_CorrectVOGs_proteins(get_test_client):
     assert set(expected) <= set(data)
 
 @pytest.mark.vsearch_vog
-def test_vsearchVOG_ERROR422_proteinsRandomString(get_test_client):
+def test_vsearchVOG_proteinsRandomString(get_test_client):
     client = get_test_client
     params = {"proteins": ["YP"]}
     response = client.get(url="/vsearch/vog/", params=params)
 
-    expected = 404
+    expected = 200
 
     assert response.status_code == expected
 
@@ -1677,12 +1681,12 @@ def test_vsearchVOG_CorrectVOGs_phages_nonphages(get_test_client):
     assert set(expected) <= set(data)
 
 @pytest.mark.vsearch_vog
-def test_vsearchVOG_ERROR422_phages_nonphagesRandomString(get_test_client):
+def test_vsearchVOG_phages_nonphagesRandomString(get_test_client):
     client = get_test_client
     params = {"phages_nonphages": ["SOMETHING"]}
     response = client.get(url="/vsearch/vog/", params=params)
 
-    expected = 404
+    expected = 200
 
     assert response.status_code == expected
 
@@ -1711,12 +1715,12 @@ def test_vsearchVOG_CorrectVOGs_species(get_test_client):
     assert set(expected) <= set(data)
 
 @pytest.mark.vsearch_vog
-def test_vsearchVOG_ERROR422_speciesRandomString(get_test_client):
+def test_vsearchVOG_speciesRandomString(get_test_client):
     client = get_test_client
     params = {"species": ["SOMETHING"]}
     response = client.get(url="/vsearch/vog/", params=params)
 
-    expected = 404
+    expected = 200
 
     assert response.status_code == expected
 
@@ -1783,12 +1787,12 @@ def test_vsearchVOG_VOGIDs_pmin(get_test_client):
 @pytest.mark.vsearch_vog
 def test_vsearchVOG_ERROR404_pmaxOne(get_test_client):
     client = get_test_client
-    params = {"pmax": [1]}
+    params = {"pmax": 1}
     response = client.get(url="/vsearch/vog/", params=params)
 
     data = response.text.split("\n")
     print(data)
-    expected = 404
+    expected = 200
     assert response.status_code == expected
 
 @pytest.mark.vsearch_vog
