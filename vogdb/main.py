@@ -70,12 +70,12 @@ async def root(db: Session = Depends(get_db)):
 async def search_species(
         request: Request,
         db: Session = Depends(get_db),
-        taxon_id: List[int] =  Query(None, title="Taxon ID", le = 9999999, description="Species identity number",
-                                     example={"2713301"}),
-        name: List[str] = Query(None, max_length=20, regex="^[a-zA-Z\s]*$", title="species name",
-                                                                   description="species name", example={"corona"}),
-        phage: Optional[bool] = Query(None, example = "True"),
-        source: Optional[str] = Query(None, max_length= 20, regex="^[a-zA-Z\s]*$", example = "NCBI")):
+        taxon_id: List[int] = Query(None, title="Taxon ID", le=9999999, description="Species identity number",
+                                    example={"2713301"}),
+        name: List[str] = Query(None, max_length=20, title="species name",
+                                description="species name", example={"corona"}),
+        phage: Optional[bool] = Query(None, example="True"),
+        source: Optional[str] = Query(None, max_length=20, regex="^[a-zA-Z\s]*$", example="NCBI")):
     """
     This functions searches a database and returns a list of species IDs for records in that database
     which meet the search criteria.
@@ -104,8 +104,9 @@ async def search_species(
          response_model=List[Species_profile], summary="Species summary")
 @limiter.limit("9/second")
 async def get_summary_species(request: Request,
-                              taxon_id: Optional[List[int]] = Query(..., title="Taxon ID", le = 9999999,
-                                                                  description="Species identity number", example={"2713301"}),
+                              taxon_id: Optional[List[int]] = Query(..., title="Taxon ID", le=9999999,
+                                                                    description="Species identity number",
+                                                                    example={"2713301"}),
                               db: Session = Depends(get_db)):
     """
     This function returns Species summaries for a list of taxon ids.
@@ -150,46 +151,48 @@ async def search_vog(
         request: Request,
         id: Optional[Set[str]] = Query(None, max_length=10, regex="^VOG", title="VOG ID",
                                        description="VOG identity number", example={"VOG00004"}),
-        pmin: Optional[int] = Query(None, ge=0, le= 999999, title = "protein max limit",
+        pmin: Optional[int] = Query(None, ge=0, le=999999, title="protein max limit",
                                     description="maximum number of proteins for a VOG", example=66),
-        pmax: Optional[int] = Query(None, ge=0, le= 999999, title = "protein min limit",
+        pmax: Optional[int] = Query(None, ge=0, le=999999, title="protein min limit",
                                     description="minimum number of proteins for a VOG", example=5),
-        smax: Optional[int] = Query(None,ge=0, le= 999999, title = "species max limit",
+        smax: Optional[int] = Query(None, ge=0, le=999999, title="species max limit",
                                     description="maximum number of species for a VOG", example=66),
-        smin: Optional[int] = Query(None, ge=0,le= 999999, title = "species max limit",
+        smin: Optional[int] = Query(None, ge=0, le=999999, title="species max limit",
                                     description="maximum number of species for a VOG", example=5),
-        functional_category: Optional[Set[str]] = Query(None, max_length=5, title = "functional categories",
-                                                    description= "[Xr] Virus replication, [Xs] Virus structure; " +
-                                                    "[Xh] [Xp] protein function beneficial for the host, virus, respectively; " +
-                                                    "[Xu] unknown function", example={"XrXs"}),
-        consensus_function: Optional[Set[str]] = Query(None, max_length=100, title = "consensus function",
+        functional_category: Optional[Set[str]] = Query(None, max_length=5, title="functional categories",
+                                                        description="[Xr] Virus replication, [Xs] Virus structure; " +
+                                                                    "[Xh] [Xp] protein function beneficial for the host, virus, respectively; " +
+                                                                    "[Xu] unknown function", example={"XrXs"}),
+        consensus_function: Optional[Set[str]] = Query(None, max_length=100, title="consensus function",
                                                        description="consensus function of the protein",
                                                        example={"Transcriptional activator"}),
-        mingLCA: Optional[int] = Query(None,ge=0, le=999999,  title="gLCA min limit",
+        mingLCA: Optional[int] = Query(None, ge=0, le=999999, title="gLCA min limit",
                                        description="minimal number of genomes in LCA", example=2000),
-        maxgLCA: Optional[int] = Query(None,ge=0, le=999999,  title="gLCA max limit",
+        maxgLCA: Optional[int] = Query(None, ge=0, le=999999, title="gLCA max limit",
                                        description="maximal number of genomes in group and LCA", example=10000),
-        mingGLCA: Optional[int] = Query(None, ge=0, le=999999,  title="gGLCA min limit",
-                                       description="minimal number of genomes in group and LCA", example=2000),
-        maxgGLCA: Optional[int] = Query(None, ge=0, le=999999,  title="gGLCA min limit",
-                                       description="minimal number of genomes in LCA", example=2000),
-        ancestors: Optional[Set[str]] = Query(None, max_length= 200, title= "last common ancestors",
+        mingGLCA: Optional[int] = Query(None, ge=0, le=999999, title="gGLCA min limit",
+                                        description="minimal number of genomes in group and LCA", example=2000),
+        maxgGLCA: Optional[int] = Query(None, ge=0, le=999999, title="gGLCA min limit",
+                                        description="minimal number of genomes in LCA", example=2000),
+        ancestors: Optional[Set[str]] = Query(None, max_length=200, title="last common ancestors",
                                               example={"Viruses;Varidnaviria"}),
         h_stringency: Optional[bool] = Query(None, title="high virus stringency"),
         m_stringency: Optional[bool] = Query(None, title="medium virus stringency"),
         l_stringency: Optional[bool] = Query(None, title="low virus stringency"),
         virus_specific: Optional[bool] = Query(None),
-        phages_nonphages: Optional[str] = Query(None, max_length=20, title="select only phage/nonphage VOGs", example="phages"),
+        phages_nonphages: Optional[str] = Query(None, max_length=20, title="select only phage/nonphage VOGs",
+                                                example="phages"),
         proteins: Optional[Set[str]] = Query(None, regex="^.*(YP|NP).*$", title="Protein ID",
                                              description="Protein taxon identity number",
                                              example={"2301601.YP_009812740.1"}),
         species: Optional[Set[str]] = Query(None, max_length=20, regex="^[a-zA-Z\s]*$", title="species name",
                                             description="species name", example={"bovine coronavirus"}),
-        tax_id: Optional[Set[int]] = Query(None, title="Taxon ID", le = 9999999,
+        tax_id: Optional[Set[int]] = Query(None, title="Taxon ID", le=9999999,
                                            description="Species identity number", example={"2713301"}),
-        union: Optional[bool] = Query(None, title="union boolean", description="When at least two taxonomy IDs or species names are provided,"
-                                                                               " the VOGs containing either are returned, when the union parameter is set to True. Otherwise the result is"
-                                                                               " the intersection of the VOGs contained in either group."),
+        union: Optional[bool] = Query(None, title="union boolean",
+                                      description="When at least two taxonomy IDs or species names are provided,"
+                                                  " the VOGs containing either are returned, when the union parameter is set to True. Otherwise the result is"
+                                                  " the intersection of the VOGs contained in either group."),
         db: Session = Depends(get_db)):
     """
     This functions searches a database and returns a list of vog unique identifiers (UIDs) for records in that database
@@ -207,11 +210,11 @@ async def search_vog(
         log.debug("Received a vsearch/vog request")
 
         vog_list = [str(i[0]) for i in get_vogs(db, id, pmin, pmax, smax, smin, functional_category, consensus_function,
-                        mingLCA, maxgLCA, mingGLCA, maxgGLCA, ancestors, h_stringency, m_stringency, l_stringency,
-                        virus_specific, phages_nonphages, proteins, species, tax_id, union)]
+                                                mingLCA, maxgLCA, mingGLCA, maxgGLCA, ancestors, h_stringency,
+                                                m_stringency, l_stringency,
+                                                virus_specific, phages_nonphages, proteins, species, tax_id, union)]
 
         vogs = PlainTextResponse('\n'.join(vog_list))
-
 
         if not vogs.body.decode("utf-8"):
             log.info("No VOGs match the search criteria.")
@@ -222,11 +225,11 @@ async def search_vog(
         return vogs
 
 
-
 @api.get("/vsummary/vog", response_model=List[VOG_profile], summary="VOG summary")
 @limiter.limit("9/second")
 async def get_summary_vog(request: Request, id: List[str] = Query(..., max_length=10, regex="^VOG", title="VOG ID",
-                                                                  description="VOG identity number", example={"VOG00004"}),
+                                                                  description="VOG identity number",
+                                                                  example={"VOG00004"}),
                           db: Session = Depends(get_db)):
     """
     This function returns vog summaries for a list of unique identifiers (UIDs).
@@ -265,8 +268,9 @@ async def post_summary_species(body: List[VOG_UID], db: Session = Depends(get_db
 
 @api.get("/vfetch/vog/hmm", response_model=Dict[str, str], summary="VOG HMM fetch")
 @limiter.limit("9/second")
-async def get_fetch_vog_hmm(request: Request,  id: List[str] = Query(..., max_length=10, regex="^VOG", title="VOG ID",
-                                                                  description="VOG identity number", example={"VOG00004"})):
+async def get_fetch_vog_hmm(request: Request, id: List[str] = Query(..., max_length=10, regex="^VOG", title="VOG ID",
+                                                                    description="VOG identity number",
+                                                                    example={"VOG00004"})):
     """
     This function returns the Hidden Markov Matrix (HMM) for a list of unique identifiers (UIDs)
     \f
@@ -285,6 +289,7 @@ async def get_fetch_vog_hmm(request: Request,  id: List[str] = Query(..., max_le
         log.debug("HMM search successful.")
         return vog_hmm
 
+
 @api.post("/vfetch/vog/hmm", response_model=Dict[str, str], summary="VOG HMM fetch")
 async def post_fetch_vog_hmm(body: List[VOG_UID]):
     """
@@ -298,8 +303,9 @@ async def post_fetch_vog_hmm(body: List[VOG_UID]):
 
 @api.get("/vfetch/vog/msa", response_model=Dict[str, str], summary="VOG MSA fetch")
 @limiter.limit("9/second")
-async def get_fetch_vog_msa(request: Request,  id: List[str] = Query(..., max_length=10, regex="^VOG", title="VOG ID",
-                                                                  description="VOG identity number", example={"VOG00004"})):
+async def get_fetch_vog_msa(request: Request, id: List[str] = Query(..., max_length=10, regex="^VOG", title="VOG ID",
+                                                                    description="VOG identity number",
+                                                                    example={"VOG00004"})):
     """
     This function returns the Multiple Sequence Alignment (MSA) for a list of unique identifiers (UIDs)
     \f
@@ -364,12 +370,13 @@ async def plain_vog_msa(id: str = Path(..., title="VOG id", min_length=8, regex=
          response_class=PlainTextResponse, summary="Protein search")
 @limiter.limit("9/second")
 async def search_protein(request: Request,
-                         species_name: List[str] = Query(None, max_length=20, regex="^[a-zA-Z\s]*$", title="species name",
-                                                                  description="species name", example={"corona"}),
-                         taxon_id: List[int] =  Query(None, title="Taxon ID", le = 9999999,
-                                                                  description="Species identity number", example={"2713301"}),
+                         species_name: List[str] = Query(None, max_length=20, regex="^[a-zA-Z\s]*$",
+                                                         title="species name",
+                                                         description="species name", example={"corona"}),
+                         taxon_id: List[int] = Query(None, title="Taxon ID", le=9999999,
+                                                     description="Species identity number", example={"2713301"}),
                          VOG_id: List[str] = Query(None, max_length=10, regex="^VOG", title="VOG ID",
-                                                                  description="VOG identity number", example={"VOG00004"}),
+                                                   description="VOG identity number", example={"VOG00004"}),
                          db: Session = Depends(get_db)):
     """
     This functions searches a database and returns a list of Protein IDs for records in the database
@@ -382,7 +389,6 @@ async def search_protein(request: Request,
     """
     if all(param is None for param in [species_name, taxon_id, VOG_id]):
         raise HTTPException(status_code=400, detail="No parameters given.")
-
 
     with error_handling():
         log.debug("Received a vsearch/protein request")
@@ -402,9 +408,10 @@ async def search_protein(request: Request,
 @api.get("/vsummary/protein",
          response_model=List[Protein_profile], summary="Protein summary")
 @limiter.limit("9/second")
-async def get_summary_protein(request: Request, id: List[str] = Query(..., max_length=25, regex="^.*(YP|NP).*$", title="Protein ID",
-                                                                  description="Protein taxon identity number",
-                                                                  example={"2301601.YP_009812740.1"}),
+async def get_summary_protein(request: Request,
+                              id: List[str] = Query(..., max_length=25, regex="^.*(YP|NP).*$", title="Protein ID",
+                                                    description="Protein taxon identity number",
+                                                    example={"2301601.YP_009812740.1"}),
                               db: Session = Depends(get_db)):
     """
     This function returns protein summaries for a list of Protein identifiers (pids)
@@ -446,9 +453,10 @@ async def post_summary_protein(body: List[ProteinID], db: Session = Depends(get_
 @api.get("/vfetch/protein/faa",
          response_model=List[AA_seq], summary="Protein AA fetch")
 @limiter.limit("9/second")
-async def get_fetch_protein_faa(request: Request, id: List[str] = Query(..., max_length=25, regex="^.*(YP|NP).*$", title="Protein ID",
-                                                                  description="Protein taxon identity number",
-                                                                  example={"2301601.YP_009812740.1"}),
+async def get_fetch_protein_faa(request: Request,
+                                id: List[str] = Query(..., max_length=25, regex="^.*(YP|NP).*$", title="Protein ID",
+                                                      description="Protein taxon identity number",
+                                                      example={"2301601.YP_009812740.1"}),
                                 db: Session = Depends(get_db)):
     """
     This function returns Amino acid sequences for the proteins specified by the protein IDs
@@ -488,9 +496,10 @@ async def post_fetch_protein_faa(body: List[ProteinID], db: Session = Depends(ge
 @api.get("/vfetch/protein/fna",
          response_model=List[NT_seq], summary="Protein NT fetch")
 @limiter.limit("9/second")
-async def get_fetch_protein_fna(request: Request, id: List[str] = Query(..., max_length=25, regex="^.*(YP|NP).*$", title="Protein ID",
-                                                                  description="Protein taxon identity number",
-                                                                  example={"2301601.YP_009812740.1"}),
+async def get_fetch_protein_fna(request: Request,
+                                id: List[str] = Query(..., max_length=25, regex="^.*(YP|NP).*$", title="Protein ID",
+                                                      description="Protein taxon identity number",
+                                                      example={"2301601.YP_009812740.1"}),
                                 db: Session = Depends(get_db)):
     """
     This function returns Nucleotide sequences for the genes specified by the protein IDs
