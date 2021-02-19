@@ -93,7 +93,7 @@ async def search_species(
 
         if not species.body.decode("utf-8"):
             log.info("No Species match the search criteria.")
-            raise HTTPException(status_code=404, detail="Item not found")
+            # raise HTTPException(status_code=404, detail="Item not found")
 
         else:
             log.info("Species have been retrieved.")
@@ -152,13 +152,13 @@ async def search_vog(
         id: Optional[Set[str]] = Query(None, max_length=10, regex="^VOG", title="VOG ID",
                                        description="VOG identity number", example={"VOG00004"}),
         pmin: Optional[int] = Query(None, ge=0, le= 999999, title = "protein max limit",
-                                    description="maximum number of proteins for a VOG", example={66}),
+                                    description="maximum number of proteins for a VOG", example=66),
         pmax: Optional[int] = Query(None, ge=0, le= 999999, title = "protein min limit",
-                                    description="minimum number of proteins for a VOG", example={5}),
+                                    description="minimum number of proteins for a VOG", example=5),
         smax: Optional[int] = Query(None,ge=0, le= 999999, title = "species max limit",
-                                    description="maximum number of species for a VOG", example={66}),
+                                    description="maximum number of species for a VOG", example=66),
         smin: Optional[int] = Query(None, ge=0,le= 999999, title = "species max limit",
-                                    description="maximum number of species for a VOG", example={5}),
+                                    description="maximum number of species for a VOG", example=5),
         functional_category: Optional[Set[str]] = Query(None, max_length=5, title = "functional categories",
                                                     description= "[Xr] Virus replication, [Xs] Virus structure; " +
                                                     "[Xh] [Xp] protein function beneficial for the host, virus, respectively; " +
@@ -216,7 +216,7 @@ async def search_vog(
 
         if not vogs.body.decode("utf-8"):
             log.info("No VOGs match the search criteria.")
-            raise HTTPException(status_code=404, detail="Item not found")
+            # raise HTTPException(status_code=404, detail="Item not found")
 
         else:
             log.info("VOGs have been retrieved.")
@@ -395,7 +395,7 @@ async def search_protein(request: Request,
 
         if not proteins.body.decode("utf-8"):
             log.debug("No Proteins match the search criteria.")
-            raise HTTPException(status_code=404, detail="Item not found")
+            # raise HTTPException(status_code=404, detail="Item not found")
         else:
             log.debug("Proteins have been retrieved.")
 
