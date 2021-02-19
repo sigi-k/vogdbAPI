@@ -74,8 +74,8 @@ async def search_species(
                                      example={"2713301"}),
         name: List[str] = Query(None, max_length=20, regex="^[a-zA-Z\s]*$", title="species name",
                                                                    description="species name", example={"corona"}),
-        phage: Optional[bool] = Query(None, example = {"True"}),
-        source: Optional[str] = Query(None, max_length= 20, regex="^[a-zA-Z\s]*$", example = {"NCBI"})):
+        phage: Optional[bool] = Query(None, example = "True"),
+        source: Optional[str] = Query(None, max_length= 20, regex="^[a-zA-Z\s]*$", example = "NCBI")):
     """
     This functions searches a database and returns a list of species IDs for records in that database
     which meet the search criteria.
