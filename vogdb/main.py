@@ -125,6 +125,9 @@ async def get_summary_species(request: Request,
             log.warning("At least one of the species was not found, or there were duplicates.\n"
                         "IDs given: {0}".format(taxon_id))
 
+        if not species_summary:
+            log.debug("No matching Species found")
+            raise HTTPException(status_code=404, detail="Item not found")
         else:
             log.info("Species summaries have been retrieved.")
 
