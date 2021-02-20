@@ -134,19 +134,6 @@ async def get_summary_species(request: Request,
         return species_summary
 
 
-@api.post("/vsummary/species",
-          response_model=List[Species_profile], summary="Species summary")
-async def post_summary_species(body: List[Species_ID], db: Session = Depends(get_db)):
-    """
-    This function returns Species summaries for a list of taxon ids.
-    \f
-    :param body: Taxon ID
-    :param db: database session dependency
-    :return: Species summary
-    """
-    return await get_summary_species([s.taxon_id for s in body], db)
-
-
 @api.get("/vsearch/vog",
          response_class=PlainTextResponse, summary="VOG search")
 @limiter.limit("9/second")
@@ -256,19 +243,6 @@ async def get_summary_vog(request: Request, id: List[str] = Query(..., max_lengt
         return vog_summary
 
 
-@api.post("/vsummary/vog",
-          response_model=List[VOG_profile], summary="VOG summary")
-async def post_summary_species(body: List[VOG_UID], db: Session = Depends(get_db)):
-    """
-    This function returns Species summaries for a list of taxon ids.
-    \f
-    :param body: list of VOG uids as returned from search_vog
-    :param db: database session dependency
-    :return: VOG summary object
-    """
-    return await get_summary_vog([vog.id for vog in body], db)
-
-
 @api.get("/vfetch/vog/hmm", response_model=Dict[str, str], summary="VOG HMM fetch")
 @limiter.limit("9/second")
 async def get_fetch_vog_hmm(request: Request, id: List[str] = Query(..., max_length=10, regex="^VOG", title="VOG ID",
@@ -293,17 +267,6 @@ async def get_fetch_vog_hmm(request: Request, id: List[str] = Query(..., max_len
         return vog_hmm
 
 
-@api.post("/vfetch/vog/hmm", response_model=Dict[str, str], summary="VOG HMM fetch")
-async def post_fetch_vog_hmm(body: List[VOG_UID]):
-    """
-    This function returns the Hidden Markov Matrix (HMM) for a list of unique identifiers (UIDs)
-    \f
-    :param body: list of VOG uids as returned from search_vog
-    :return: vog data (HMM profile)
-    """
-    return await get_fetch_vog_hmm([vog.id for vog in body])
-
-
 @api.get("/vfetch/vog/msa", response_model=Dict[str, str], summary="VOG MSA fetch")
 @limiter.limit("9/second")
 async def get_fetch_vog_msa(request: Request, id: List[str] = Query(..., max_length=10, regex="^VOG", title="VOG ID",
@@ -326,17 +289,6 @@ async def get_fetch_vog_msa(request: Request, id: List[str] = Query(..., max_len
         log.debug("MSA search successful.")
 
         return vog_msa
-
-
-@api.post("/vfetch/vog/msa", response_model=Dict[str, str], summary="VOG MSA fetch")
-async def post_fetch_vog_msa(body: List[VOG_UID]):
-    """
-    This function returns the Multiple Sequence Alignment (MSA) for VOGs
-    \f
-    :param body: list of VOG uids as returned from search_vog
-    :return: vog data (HMM profile)
-    """
-    return await get_fetch_vog_msa([vog.id for vog in body])
 
 
 @api.get("/vplain/vog/hmm/{id}", response_class=PlainTextResponse, summary="VOG HMM fetch plain text")
@@ -441,18 +393,6 @@ async def get_summary_protein(request: Request,
         return protein_summary
 
 
-@api.post("/vsummary/protein", response_model=List[Protein_profile], summary="Protein summary")
-async def post_summary_protein(body: List[ProteinID], db: Session = Depends(get_db)):
-    """
-    This function returns protein summaries for a list of Protein identifiers (pids)
-    \f
-    :param body: proteinIDs as returned from search_protein
-    :param db: database session dependency
-    :return: list of protein summaries
-    """
-    return await get_summary_protein([p.id for p in body], db)
-
-
 @api.get("/vfetch/protein/faa",
          response_model=List[AA_seq], summary="Protein AA fetch")
 @limiter.limit("9/second")
@@ -482,18 +422,6 @@ async def get_fetch_protein_faa(request: Request,
             log.debug("Aminoacid sequences have been retrieved.")
 
         return protein_faa
-
-
-@api.post("/vfetch/protein/faa", response_model=List[AA_seq], summary="Protein AA fetch")
-async def post_fetch_protein_faa(body: List[ProteinID], db: Session = Depends(get_db)):
-    """
-    This function returns Amino acid sequences for the proteins specified by the protein IDs
-    \f
-    :param body: proteinIDs as returned from search_protein
-    :param db: database session dependency
-    :return: Amino acid sequences for the proteins
-    """
-    return await get_fetch_protein_faa([p.id for p in body], db)
 
 
 @api.get("/vfetch/protein/fna",
@@ -528,14 +456,3 @@ async def get_fetch_protein_fna(request: Request,
 
         return protein_fna
 
-
-@api.post("/vfetch/protein/fna", response_model=List[NT_seq], summary="Protein NT fetch")
-async def post_fetch_protein_fna(body: List[ProteinID], db: Session = Depends(get_db)):
-    """
-    This function returns Nucleotide sequences for the genes specified by the protein IDs
-    \f
-    :param body: proteinIDs as returned from search_protein
-    :param db: database session dependency
-    :return: Nucleotide sequences for the proteins
-    """
-    return await get_fetch_protein_fna([p.id for p in body], db)
