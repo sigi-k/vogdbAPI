@@ -1,19 +1,17 @@
 # Tasks to be run by cron.
 #
+#
 # Cronjob to update NCBI taxonomy_database.
-# update_taxa_db.py is run on every Sunday at 00:00.
+# load-taxa is run monthly on the first day of the month at 00:00.
 # Logging information specified in python script is appended to text file taxa.log.
 # Error messages that arise upon execution are appended to taxa.log.
 #
-0 0 * * 7 python /home/user/update_taxa_db.py >> /home/user/taxa.log 2>&1
+0 0 1 * * cd /home/vogdbAPI/vogdb/loader/ && ./load-taxa >> taxa.log 2>&1
+#
 #
 # Cronjob to update mysql vogdb.
-# update_db.py is run on the first Sunday of every month at 02:00.
-# Logging information specified in python script is appended to text file update.log.
-# Error messages that arise upon execution are appended to update.log.
+# load-vog is run weekly at 02:00.
+# Logging information is appended to text file vog.log.
+# Error messages that arise upon execution are appended to vog.log.
 #
-# ToDo: path not possible
-0 2 * * 7 [ $(date +\%d) -le 07 ] && python3 /home/user/update_db.py >> /home/user/update.log 2>&1
-
-
-
+0 2 * * 6 cd /home/vogdbAPI/vogdb/loader/ && ./load-vog >> vog.log 2>&1
