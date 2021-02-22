@@ -65,7 +65,8 @@ async def root(db: Session = Depends(get_db)):
 
 
 @api.get("/vsearch/species",
-         response_class=PlainTextResponse, summary="Species search")
+         response_class=PlainTextResponse, tags=["vsearch", "species"], description="Searches the database for species matching the search "
+                                                                       "criteria and returns their Taxon IDs.", summary="Species search")
 @limiter.limit("9/second")
 async def search_species(
         request: Request,
@@ -101,7 +102,7 @@ async def search_species(
 
 
 @api.get("/vsummary/species",
-         response_model=List[Species_profile], summary="Species summary")
+         response_model=List[Species_profile], tags=["vsummary", "species"], description="Returns information about species for which taxon IDs have been provided",  summary="Species summary")
 @limiter.limit("9/second")
 async def get_summary_species(request: Request,
                               taxon_id: Optional[List[int]] = Query(..., title="Taxon ID", le=9999999,
@@ -135,7 +136,8 @@ async def get_summary_species(request: Request,
 
 
 @api.get("/vsearch/vog",
-         response_class=PlainTextResponse, summary="VOG search")
+         response_class=PlainTextResponse, tags=["vsearch", "vog"], description="Searches the database for VOGs matching the search "
+                                                                       "criteria and returns their VOG IDs.",  summary="VOG search")
 @limiter.limit("9/second")
 async def search_vog(
         request: Request,
@@ -215,7 +217,7 @@ async def search_vog(
         return vogs
 
 
-@api.get("/vsummary/vog", response_model=List[VOG_profile], summary="VOG summary")
+@api.get("/vsummary/vog", response_model=List[VOG_profile],  tags=["vsummary", "vog"], description="Returns information about species for which taxon IDs have been provided",  summary="VOG summary")
 @limiter.limit("9/second")
 async def get_summary_vog(request: Request, id: List[str] = Query(..., max_length=10, regex="^VOG", title="VOG ID",
                                                                   description="VOG identity number",
