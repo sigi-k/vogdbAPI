@@ -56,7 +56,7 @@ def get_db():
         db.close()
 
 
-@api.get("/", summary="Welcome", response_model=WELCOME)
+@api.get("/", tags=["Welcome and database version"], summary="Welcome", response_model=WELCOME)
 async def root(db: Session = Depends(get_db)):
     query = db.query(Species.version).first()
     version = query[0]
@@ -65,7 +65,7 @@ async def root(db: Session = Depends(get_db)):
 
 
 @api.get("/vsearch/species",
-         response_class=PlainTextResponse, tags=["vsearch", "species"], description="Searches the database for species matching the search "
+         response_class=PlainTextResponse, tags=["species"], description="Searches the database for species matching the search "
                                                                        "criteria and returns their Taxon IDs.", summary="Species search")
 @limiter.limit("9/second")
 async def search_species(
@@ -102,7 +102,7 @@ async def search_species(
 
 
 @api.get("/vsummary/species",
-         response_model=List[Species_profile], tags=["vsummary", "species"], description="Returns information about species for which taxon IDs have been provided",  summary="Species summary")
+         response_model=List[Species_profile], tags=["species"], description="Returns information about species for which taxon IDs have been provided",  summary="Species summary")
 @limiter.limit("9/second")
 async def get_summary_species(request: Request,
                               taxon_id: Optional[List[int]] = Query(..., title="Taxon ID", le=9999999,
@@ -136,7 +136,7 @@ async def get_summary_species(request: Request,
 
 
 @api.get("/vsearch/vog",
-         response_class=PlainTextResponse, tags=["vsearch", "vog"], description="Searches the database for VOGs matching the search "
+         response_class=PlainTextResponse, tags=["vog"], description="Searches the database for VOGs matching the search "
                                                                        "criteria and returns their VOG IDs.",  summary="VOG search")
 @limiter.limit("9/second")
 async def search_vog(
@@ -217,7 +217,7 @@ async def search_vog(
         return vogs
 
 
-@api.get("/vsummary/vog", response_model=List[VOG_profile],  tags=["vsummary", "vog"], description="Returns information about species for which taxon IDs have been provided",  summary="VOG summary")
+@api.get("/vsummary/vog", response_model=List[VOG_profile], tags=["vog"], description="Returns information about VOGs for which VOG IDs have been provided",  summary="VOG summary")
 @limiter.limit("9/second")
 async def get_summary_vog(request: Request, id: List[str] = Query(..., max_length=10, regex="^VOG", title="VOG ID",
                                                                   description="VOG identity number",
@@ -245,7 +245,7 @@ async def get_summary_vog(request: Request, id: List[str] = Query(..., max_lengt
         return vog_summary
 
 
-@api.get("/vfetch/vog/hmm", response_model=Dict[str, str], summary="VOG HMM fetch")
+@api.get("/vfetch/vog/hmm", response_model=Dict[str, str], tags=["vog"], description="Returns the Hidden Markov Model (HMM) for the given VOG IDs.", summary="VOG HMM fetch")
 @limiter.limit("9/second")
 async def get_fetch_vog_hmm(request: Request, id: List[str] = Query(..., max_length=10, regex="^VOG", title="VOG ID",
                                                                     description="VOG identity number",
@@ -269,7 +269,7 @@ async def get_fetch_vog_hmm(request: Request, id: List[str] = Query(..., max_len
         return vog_hmm
 
 
-@api.get("/vfetch/vog/msa", response_model=Dict[str, str], summary="VOG MSA fetch")
+@api.get("/vfetch/vog/msa", response_model=Dict[str, str], tags=["vog"], description="Returns the Multiple Sequence Alignment (MSA) for the given VOG IDs.", summary="VOG MSA fetch")
 @limiter.limit("9/second")
 async def get_fetch_vog_msa(request: Request, id: List[str] = Query(..., max_length=10, regex="^VOG", title="VOG ID",
                                                                     description="VOG identity number",
@@ -293,7 +293,7 @@ async def get_fetch_vog_msa(request: Request, id: List[str] = Query(..., max_len
         return vog_msa
 
 
-@api.get("/vplain/vog/hmm/{id}", response_class=PlainTextResponse, summary="VOG HMM fetch plain text")
+@api.get("/vplain/vog/hmm/{id}", response_class=PlainTextResponse, tags=["vog"], description="Returns the Hidden Markov Model (HMM) for the given VOG IDs in plain text format.", summary="VOG HMM fetch plain text")
 async def plain_vog_hmm(id: str = Path(..., title="VOG id", min_length=8, regex="^VOG\d+$")):
     """
     Get the Hidden Markov Matrix of the given VOG as plain text.
@@ -308,7 +308,7 @@ async def plain_vog_hmm(id: str = Path(..., title="VOG id", min_length=8, regex=
             raise HTTPException(404, "Not found")
 
 
-@api.get("/vplain/vog/msa/{id}", response_class=PlainTextResponse, summary="VOG MSA fetch plain text")
+@api.get("/vplain/vog/msa/{id}", response_class=PlainTextResponse, tags=["vog"], description="Returns the Multiple Sequence Alignment (MSA) for the given VOG IDs in plain text format.", summary="VOG MSA fetch plain text")
 async def plain_vog_msa(id: str = Path(..., title="VOG id", min_length=8, regex="^VOG\d+$")):
     """
     Get the Multiple Sequence Alignment of the given VOG as plain text.
@@ -324,7 +324,8 @@ async def plain_vog_msa(id: str = Path(..., title="VOG id", min_length=8, regex=
 
 
 @api.get("/vsearch/protein",
-         response_class=PlainTextResponse, summary="Protein search")
+         response_class=PlainTextResponse, tags=["protein"], description="Searches the database for proteins matching the search "
+                                                                       "criteria and returns their Protein IDs.", summary="Protein search")
 @limiter.limit("9/second")
 async def search_protein(request: Request,
                          species_name: List[str] = Query(None, max_length=20, regex="^[a-zA-Z\s]*$",
@@ -363,7 +364,7 @@ async def search_protein(request: Request,
 
 
 @api.get("/vsummary/protein",
-         response_model=List[Protein_profile], summary="Protein summary")
+         response_model=List[Protein_profile], tags=["protein"], description="Returns information about Proteins for which Protein IDs have been provided", summary="Protein summary")
 @limiter.limit("9/second")
 async def get_summary_protein(request: Request,
                               id: List[str] = Query(..., max_length=25, regex="^.*(YP|NP).*$", title="Protein ID",
@@ -396,7 +397,7 @@ async def get_summary_protein(request: Request,
 
 
 @api.get("/vfetch/protein/faa",
-         response_model=List[AA_seq], summary="Protein AA fetch")
+         response_model=List[AA_seq], tags=["protein"], description="Returns Aminoacid Sequences about Proteins for which Protein IDs have been provided", summary="Protein AA fetch")
 @limiter.limit("9/second")
 async def get_fetch_protein_faa(request: Request,
                                 id: List[str] = Query(..., max_length=25, regex="^.*(YP|NP).*$", title="Protein ID",
@@ -427,7 +428,7 @@ async def get_fetch_protein_faa(request: Request,
 
 
 @api.get("/vfetch/protein/fna",
-         response_model=List[NT_seq], summary="Protein NT fetch")
+         response_model=List[NT_seq], tags=["protein"], description="Returns Nucleotide Sequences about Proteins for which Protein IDs have been provided", summary="Protein NT fetch")
 @limiter.limit("9/second")
 async def get_fetch_protein_fna(request: Request,
                                 id: List[str] = Query(..., max_length=25, regex="^.*(YP|NP).*$", title="Protein ID",

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, Set, List
 
 """
@@ -19,52 +19,45 @@ if those two criteria are not fulfilled, pydantic will throw an ValidationError
 """
 
 class WELCOME(BaseModel):
-    message: str
-    version: int
+    message: str = Field(..., example="Hello!")
+    version: int = Field(..., example=202)
 
     class Config:
         orm_mode = True
 
 
 class VOG_UID(BaseModel):
-    id: str
+    id: str = Field(..., example="VOG00001")
 
     class Config:
         orm_mode = True
 
 
 class Species_ID(BaseModel):
-    taxon_id: int
+    taxon_id: int = Field(..., example=11128)
 
     class Config:
         orm_mode = True
 
 
-# class VOG_protein(BaseModel):
-#     id: str
-#
-#     class Config:
-#         orm_mode = True
-
-
 class ProteinID(BaseModel):
-    id: str
+    id: str = Field(..., example="1048207.YP_009018659.1")
 
     class Config:
         orm_mode = True
 
 
 class VOG_base(VOG_UID):
-    protein_count: int
-    species_count: int
-    function: str
-    consensus_function: str
-    genomes_in_group: int
-    genomes_total_in_LCA: int
-    ancestors: str = None
-    h_stringency: bool
-    m_stringency: bool
-    l_stringency: bool
+    protein_count: int = Field(..., example=10)
+    species_count: int = Field(..., example=10)
+    function: str = Field(..., example="Xu")
+    consensus_function: str = Field(..., example="Excisionase")
+    genomes_in_group: int = Field(..., example=10)
+    genomes_total_in_LCA: int = Field(..., example=10)
+    ancestors: str = Field(..., example="Viruses")
+    h_stringency: bool = Field(..., example=True)
+    m_stringency: bool = Field(..., example=True)
+    l_stringency: bool = Field(..., example=True)
 
     class Config:
         orm_mode = True
@@ -78,10 +71,10 @@ class VOG_profile(VOG_base):
 
 
 class Species_base(Species_ID):
-    species_name: str
-    phage: str
-    source: str
-    version: int
+    species_name: str = Field(..., example="Bovine coronavirus")
+    phage: bool = Field(..., example=True)
+    source: str = Field(..., example="NCBI Refseq")
+    version: int = Field(..., example=202)
 
     class Config:
         orm_mode = True
@@ -105,14 +98,14 @@ class Protein_profile(ProteinID):
 
 
 class AA_seq(ProteinID):
-    aa_seq: str
+    aa_seq: str = Field(..., example="MTNAIRVRTDRMKNLTEIHGLNESETARRIGCSRQTYRRAIDGENVSAGFVAGACLSFGVPFDALFHTVRVEAETPAA")
 
     class Config:
         orm_mode = True
 
 
 class NT_seq(ProteinID):
-    nt_seq: str
+    nt_seq: str = Field(..., example="ATGACCAACGCGATCAGGGTCCGCACGGACCGCATGAAGAACTTGACGGAAATCCACGGACTGAACGAGTCCGAGACT")
 
     class Config:
         orm_mode = True
