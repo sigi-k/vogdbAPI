@@ -1288,17 +1288,6 @@ def test_vsearchSpecies_ERROR422_IdsLongParameter(get_test_client):
 
 
 @pytest.mark.vsearch_species
-@pytest.mark.skip
-def test_vsearchSpecies_ERROR422_nameIntegers(get_test_client):
-    client = get_test_client
-    params = {"name": [657567, 123, 124124, 1123]}
-    response = client.get(url="/vsearch/species/", params=params)
-    expected = 422
-
-    assert response.status_code == expected
-
-
-@pytest.mark.vsearch_species
 def test_vsearchSpecies_nameRandomString(get_test_client):
     client = get_test_client
     params = {"name": ["SOMETHING"]}
