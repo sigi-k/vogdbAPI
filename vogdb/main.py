@@ -70,7 +70,7 @@ async def root(db: Session = Depends(get_db)):
 async def search_species(
         request: Request,
         db: Session = Depends(get_db),
-        taxon_id: List[int] = Query(None, title="Taxon ID", le=9999999, description="Species identity number",
+        taxon_id: List[int] = Query(None, title="Taxon ID", le=9999999, description="Species taxonomy ID",
                                     example={"2713301"}),
         name: List[str] = Query(None, max_length=20, title="species name",
                                 description="species name", example={"corona"}),
