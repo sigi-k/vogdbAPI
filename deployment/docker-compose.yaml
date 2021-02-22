@@ -1,0 +1,38 @@
+version: '3.7'
+
+services:
+  db:
+    image: mysql:8
+    cap_add:
+      - SYS_NICE
+    restart: unless-stopped
+    volumes:
+      - "database:/var/lib/mysql"
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_DATABASE: vogdb
+      MYSQL_USER: vog
+      MYSQL_PASSWORD: password
+
+  app:
+    init: true
+    image: sigikoizar/vogdb_api:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    volumes:
+      - "data:/data"
+    ports:
+      - "8000:8000"
+    environment:
+      VOG_DATA: /data/vog
+      NCBI_DATA: /data/ncbi
+      MYSQL_HOST: db
+      MYSQL_DATABASE: vogdb
+      MYSQL_USER: vog
+      MYSQL_PASSWORD: password
+    command: uvicorn
+
+volumes:
+  database:
+  data:
