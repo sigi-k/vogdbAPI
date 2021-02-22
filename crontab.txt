@@ -2,16 +2,17 @@
 #
 #
 # Cronjob to update NCBI taxonomy_database.
-# load-taxa is run monthly on the first day of the month at 00:00.
+# load-taxa is run weekly on Monday at 00:00.
 # Logging information specified in python script is appended to text file taxa.log.
 # Error messages that arise upon execution are appended to taxa.log.
 #
-0 0 1 * * cd /home/vogdbAPI/scripts/ && ./load-taxa >> taxa.log 2>&1
+0 0 * * 1 [ path_to /usr/bin/ ]docker-compose -f /path/to/docker-compose.yaml run --rm app load-taxa >> taxa.log 2>&1
 #
 #
 # Cronjob to update mysql vogdb.
-# load-vog is run weekly at 02:00.
+# load-vog is run weekly on Monday at 02:00.
 # Logging information is appended to text file vog.log.
 # Error messages that arise upon execution are appended to vog.log.
 #
-0 2 * * 6 cd /home/vogdbAPI/scripts/ && ./load-vog >> vog.log 2>&1
+0 2 * * 1 [ path_to /usr/bin/ ]docker-compose -f /path/to/docker-compose.yaml run --rm app load-vog >> vog.log 2>&1
+#
