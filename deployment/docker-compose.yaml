@@ -16,7 +16,7 @@ services:
 
   app:
     init: true
-    image: sigikoizar/vogdb_api:latest
+    image: sigikoizar/vogdb_api:1.0
     restart: unless-stopped
     depends_on:
       - db
