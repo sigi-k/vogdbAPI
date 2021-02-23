@@ -18,6 +18,10 @@ wget --no-verbose \
      --timestamping --accept 'vog*' \
      ${SOURCE}/${VERSION}/
 
+for FILE in ls *.md5; do
+  md5sum -c $FILE
+done
+
 # unzip FASTA files, but keep the original so that timestamping works
 rm *.fa
 gunzip -k *.fa.gz
