@@ -18,7 +18,7 @@ wget --no-verbose \
      --timestamping --accept 'vog*' \
      ${SOURCE}/${VERSION}/
 
-for FILE in ls *.md5; do
+for FILE in *.md5; do
   md5sum -c $FILE
 done
 
