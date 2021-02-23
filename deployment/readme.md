@@ -9,6 +9,8 @@ docker-compose up -d
 ```
 
 
-## cronjob
-A cronjob updates the VOGDB as well as the NCBI-Taxonomy data once a week.
+## cron
+Cronjobs are scheduled weekly to monitor the VOGDB fileshare site as well as the NCBI-Taxonomy site.
+If there are modified files, the load-vog and load-taxa scripts are executed. Information and error
+messages are logged in vog.log and taxa.log, respectively.
 ##
