@@ -1,5 +1,8 @@
-from sqlalchemy import create_engine
 from sqlalchemy.types import Integer, String, Boolean, Text
+from sqlalchemy import create_engine, MetaData, Table, select, func
+import pandas as pd
+import os
+from database import database_url
 
 """
 Here we create our VOGDB and create all the tables that we are going to use
@@ -174,3 +177,58 @@ def save_db_sql(db_url, vog, species, proteins, membership):
         con.execute("OPTIMIZE LOCAL TABLE VOG, Species, Protein, Member;")
 
     print("All tables optimized!")
+
+
+def db_rows():
+    '''Connect to MySQL VOGDB and count the number of rows in Tables vog, species and member.'''
+
+    engine = create_engine(database_url())
+    metadata = MetaData()
+    vog = Table('vog', metadata, autoload=True, autoload_with=engine)
+    species = Table('Species', metadata, autoload=True, autoload_with=engine)
+    member = Table('Member', metadata, autoload=True, autoload_with=engine)
+
+    con = engine.connect()
+    species_db = con.execute(func.count(species.columns.TaxonID)).scalar()
+    protein_db = con.execute(func.count(member.columns.ProteinID)).scalar()
+    vog_db = con.execute(func.count(vog.columns.VOG_ID)).scalar()
+    return species_db, protein_db, vog_db
+
+
+def file_rows():
+    speciesfile = os.path.join(data_path, "vog.species.list")
+    memberfile = os.path.join(data_path, "vog.members.tsv.gz")
+    species = pd.read_csv(
+        speciesfile,
+        sep="\t",
+        header=0)
+    member = pd.read_csv(
+        memberfile,
+        compression="gzip",
+        sep="\t",
+        header=0)
+    species_count = len(species.axes[0])
+    protein_count = member.ProteinCount.sum()
+    vog_count = len(member.axes[0])
+    return species_count, protein_count, vog_count
+
+
+def compare():
+    '''Call the function that get row counts in VOGDB,
+    call the function that get species, protein and vog counts in the flat files.
+    Compare the values.
+    '''
+    print('Count the rows in MySQL VOGDB and compare with the statistics from VOG Homepage:')
+    db_rows()
+    file_rows()
+
+    try:
+        assert db_rows() == file_rows()
+    except AssertionError:
+        print(
+            f'WARNING: The numbers of rows for species, proteins and vogs in the db {db_rows()} do not correspond to the numbers given in the files {file_rows()}')
+        # notify()
+        # print('A notification was sent to CUBE IssueTracker.')
+    else:
+        print(f'The numbers of species, proteins and vogs in VOGDB are correct {db_rows()}.')
+
